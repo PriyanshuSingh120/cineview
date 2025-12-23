@@ -1,23 +1,33 @@
-import os, requests, base64, json, time
+import os
+import requests
+import base64
+import json
+import time
 
-# Config
+# Configuration from Environment Variables
 ABYSS_API_KEY = os.getenv("ABYSS_KEY")
 GITHUB_TOKEN = os.getenv("GH_TOKEN")
 GITHUB_REPO = os.getenv("GITHUB_REPOSITORY")
 
 def push(path, content, msg):
+    """Pushes or updates a file in the GitHub repository via API."""
     url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{path}"
-    headers = {"Authorization": f"token {GITHUB_TOKEN}", "Accept": "application/vnd.github.v3+json"}
+    headers = {
+        "Authorization": f"token {GITHUB_TOKEN}",
+        "Accept": "application/vnd.github.v3+json"
+    }
     
-    # Check if file exists to get SHA
+    # Check if file exists to retrieve its current SHA (required for updates)
     r = requests.get(url, headers=headers)
     sha = r.json().get('sha') if r.status_code == 200 else None
     
+    # Prepare payload with base64 encoded content
     payload = {
         "message": msg, 
         "content": base64.b64encode(content.encode('utf-8')).decode('utf-8')
     }
-    if sha: payload["sha"] = sha
+    if sha:
+        payload["sha"] = sha
     
     res = requests.put(url, headers=headers, json=payload)
     print(f"   - Push {path}: Status {res.status_code}")
@@ -26,6 +36,7 @@ def push(path, content, msg):
 def main():
     print("--- Starting Abyss Sync Bot ---")
     
+    # Safety Check for Secrets
     if not ABYSS_API_KEY:
         print("CRITICAL ERROR: ABYSS_KEY is not set in Secrets!")
         exit(1)
@@ -35,6 +46,125 @@ def main():
 
     print(f"Connecting to Abyss API...")
     api_url = f"https://api.abyss.to/v1/resources?key={ABYSS_API_KEY}&maxResults=100"
+    
+    try:
+        response = requests.get(api_url)
+        print(f"Abyss API Response Status: {response.status_code}")
+        data = response.json()
+    except Exception as e:
+        print(f"CRITICAL ERROR: Failed to connect to Abyss: {e}")
+        exit(1)
+
+    items = data.get('items', [])
+    if not items:
+        print("Warning: No items found in your Abyss account.")
+    
+    catalog = []
+
+    for item in items:
+        name = item.get('name', 'Unknown')
+        iid = item.get('id')
+        itype = item.get('type')
+        
+        print(f"Processing: {name} ({itype})")
+        
+        try:
+            if itype == 'file':
+                # Create a dedicated player page for individual movies
+                html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{name}</title>
+    <style>
+        body {{ margin: 0; background: #000; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }}
+        iframe {{ width: 100%; height: 100%; border: none; }}
+    </style>
+</head>
+<body>
+    <iframe src="https://abyss.to/e/{iid}" allowfullscreen></iframe>
+</body>
+</html>"""
+                push(f"watch/{iid}.html", html, f"Sync Movie: {name}")
+                catalog.append({"name": name, "link": f"watch/{iid}.html", "type": "Movie"})
+            
+            elif itype == 'folder':
+                # Fetch episodes/files inside the folder for Series handling
+                f_url = f"https://api.abyss.to/v1/resources?key={ABYSS_API_KEY}&parentId={iid}"
+                f_resp = requests.get(f_url).json()
+                eps = [{"name": e.get('name'), "id": e.get('id')} for e in f_resp.get('items', [])]
+                
+                if eps:
+                    ep_js = json.dumps(eps)
+                    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{name}</title>
+    <style>
+        body {{ background: #111; color: #fff; font-family: sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; }}
+        #p {{ flex-grow: 1; border: none; background: #000; }}
+        .controls {{ padding: 15px; background: #222; border-top: 1px solid #444; }}
+        select {{ padding: 10px; background: #333; color: #fff; border: 1px solid #555; width: 100%; }}
+    </style>
+</head>
+<body>
+    <iframe id="p" src="" allowfullscreen></iframe>
+    <div class="controls">
+        <h2>{name}</h2>
+        <select onchange="play(this.value)">
+            {"".join([f'<option value="{i}">Episode {i+1}: {e["name"]}</option>' for i, e in enumerate(eps)])}
+        </select>
+    </div>
+    <script>
+        const E = {ep_js};
+        function play(i) {{
+            document.getElementById('p').src = 'https://abyss.to/e/' + E[i].id;
+        }}
+        play(0);
+    </script>
+</body>
+</html>"""
+                    push(f"series/{iid}.html", html, f"Sync Series: {name}")
+                    catalog.append({"name": name, "link": f"series/{iid}.html", "type": "Series"})
+            
+            time.sleep(1) # Delay to avoid hitting GitHub API rate limits
+        except Exception as e:
+            print(f"Error processing item {name}: {e}")
+
+    # Final Library Index Update
+    print("Building index.html...")
+    if catalog:
+        links_html = "".join([f'<li><a href="{c["link"]}">{c["name"]}</a> ({c["type"]})</li>' for c in catalog])
+        index_content = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Library</title>
+    <style>
+        body {{ font-family: sans-serif; background: #0f0f1d; color: #fff; padding: 40px; }}
+        h1 {{ color: #a0a0ff; border-bottom: 2px solid #a0a0ff; padding-bottom: 10px; }}
+        ul {{ list-style: none; padding: 0; }}
+        li {{ margin-bottom: 15px; background: #1a1a2e; padding: 15px; border-radius: 8px; border: 1px solid #333; }}
+        a {{ color: #a0a0ff; text-decoration: none; font-size: 1.2rem; font-weight: bold; }}
+        a:hover {{ text-decoration: underline; }}
+    </style>
+</head>
+<body>
+    <h1>🎬 CineView Library</h1>
+    <ul>{links_html}</ul>
+</body>
+</html>"""
+        push("index.html", index_content, "Update Home Page")
+        print("--- Sync Complete ---")
+    else:
+        print("No items to add to index.html")
+
+if __name__ == "__main__":
+    main()    api_url = f"https://api.abyss.to/v1/resources?key={ABYSS_API_KEY}&maxResults=100"
     
     try:
         response = requests.get(api_url)
