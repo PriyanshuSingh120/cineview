@@ -1,12 +1,16 @@
-import os, requests, base64, json, time
+import os
+import requests
+import base64
+import json
+import time
 
-# Config from GitHub Secrets
+# --- CONFIGURATION ---
 ABYSS_API_KEY = os.getenv("ABYSS_KEY")
 GITHUB_TOKEN = os.getenv("GH_TOKEN")
 GITHUB_REPO = os.getenv("GITHUB_REPOSITORY")
 
 def push_to_github(path, content, msg):
-    """Pushes a file to GitHub and prints the result for debugging"""
+    """Pushes a file to GitHub via API"""
     try:
         url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{path}"
         headers = {
@@ -33,8 +37,72 @@ def push_to_github(path, content, msg):
         return None
 
 def main():
-    print("--- DEBUG SYNC START ---")
+    print("--- SYNC START ---")
     
+    if not ABYSS_API_KEY or not GITHUB_TOKEN:
+        print("!!! ERROR: ABYSS_KEY or GH_TOKEN missing from Secrets.")
+        return
+
+    # 1. Fetch from Abyss
+    print("Fetching data from Abyss...")
+    try:
+        api_url = f"https://api.abyss.to/v1/resources?key={ABYSS_API_KEY}&maxResults=100"
+        response = requests.get(api_url, timeout=20)
+        data = response.json()
+        items = data.get('items', [])
+        print(f"Found {len(items)} items.")
+    except Exception as e:
+        print(f"!!! Abyss Error: {str(e)}")
+        return
+
+    catalog = []
+
+    # 2. Process Items
+    for item in items:
+        try:
+            name = item.get('name', 'Unknown')
+            iid = item.get('id')
+            itype = item.get('type')
+            
+            if not iid:
+                continue
+
+            print(f"Syncing: {name}...")
+
+            if itype == 'file':
+                # Movie Player Page
+                html = f"<html><body style='margin:0;background:#000'><iframe src='https://abyss.to/e/{iid}' width='100%' height='100%' frameborder='0' allowfullscreen></iframe></body></html>"
+                push_to_github(f"watch/{iid}.html", html, f"Sync {name}")
+                catalog.append({"name": name, "url": f"watch/{iid}.html"})
+            
+            elif itype == 'folder':
+                # Series Folder Handling
+                f_url = f"https://api.abyss.to/v1/resources?key={ABYSS_API_KEY}&parentId={iid}"
+                f_res = requests.get(f_url, timeout=15).json()
+                eps = f_res.get('items', [])
+                if eps:
+                    html = f"<html><body style='background:#111;color:#fff;font-family:sans-serif;padding:20px'><h2>{name}</h2><ul>"
+                    for e in eps:
+                        html += f"<li>{e.get('name')}</li>"
+                    html += "</ul></body></html>"
+                    push_to_github(f"series/{iid}.html", html, f"Sync {name}")
+                    catalog.append({"name": name, "url": f"series/{iid}.html"})
+            
+            time.sleep(1)
+        except Exception as e:
+            print(f"!!! Error on item {name}: {str(e)}")
+
+    # 3. Final Index Build
+    if catalog:
+        print("Building index.html...")
+        links = "".join([f'<li><a href="{c["url"]}" style="color:cyan;text-decoration:none;font-size:1.2rem">{c["name"]}</a></li>' for c in catalog])
+        index_html = f"<!DOCTYPE html><html><head><meta name='viewport' content='width=device-width,initial-scale=1.0'><title>CineView</title></head><body style='background:#0f0f1d;color:#fff;font-family:sans-serif;padding:20px'><h1>🎥 My Library</h1><ul>{links}</ul></body></html>"
+        push_to_github("index.html", index_html, "Update Index")
+    
+    print("--- SYNC FINISHED ---")
+
+if __name__ == "__main__":
+    main()    
     if not ABYSS_API_KEY or not GITHUB_TOKEN:
         print("!!! CRITICAL: ABYSS_KEY or GH_TOKEN is missing from Secrets.")
         return
