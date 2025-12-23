@@ -1,40 +1,82 @@
-import os
-import requests
-import base64
-import json
-import time
+import os, requests, base64, json, time
 
-# Configuration
-ABYSS_API_KEY = os.getenv("ABYSS_KEY")
-GITHUB_TOKEN = os.getenv("GH_TOKEN")
-GITHUB_REPO = os.getenv("GITHUB_REPOSITORY")
+# --- CONFIG ---
+ABYSS_KEY = os.getenv("ABYSS_KEY")
+GH_TOKEN = os.getenv("GH_TOKEN")
+GH_REPO = os.getenv("GITHUB_REPOSITORY")
 
-def push(path, content, msg):
-    """Pushes or updates a file in the GitHub repository via API."""
-    url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{path}"
-    headers = {
-        "Authorization": f"token {GITHUB_TOKEN}",
-        "Accept": "application/vnd.github.v3+json"
-    }
-    
-    # Check if file exists to retrieve its current SHA
+def push_to_gh(path, content, msg):
     try:
+        url = f"https://api.github.com/repos/{GH_REPO}/contents/{path}"
+        headers = {"Authorization": f"token {GH_TOKEN}", "Accept": "application/vnd.github.v3+json"}
+        
+        # Get SHA to update existing files
         r = requests.get(url, headers=headers)
         sha = r.json().get('sha') if r.status_code == 200 else None
-    except:
-        sha = None
-    
-    # Prepare payload
-    try:
-        encoded_content = base64.b64encode(content.encode('utf-8')).decode('utf-8')
+        
         payload = {
-            "message": msg, 
-            "content": encoded_content
+            "message": msg,
+            "content": base64.b64encode(content.encode('utf-8')).decode('utf-8')
         }
-        if sha:
-            payload["sha"] = sha
+        if sha: payload["sha"] = sha
         
         res = requests.put(url, headers=headers, json=payload)
+        print(f"Status {res.status_code} for {path}")
+        return res.status_code
+    except Exception as e:
+        print(f"Failed to push {path}: {e}")
+        return None
+
+def main():
+    print("Initializing Sync...")
+    if not ABYSS_KEY or not GH_TOKEN:
+        print("Missing Secrets! Check ABYSS_KEY and GH_TOKEN.")
+        return
+
+    # Fetch from Abyss
+    try:
+        resp = requests.get(f"https://api.abyss.to/v1/resources?key={ABYSS_KEY}&maxResults=100", timeout=15)
+        items = resp.json().get('items', [])
+    except Exception as e:
+        print(f"Abyss API Error: {e}")
+        return
+
+    catalog = []
+    
+    for item in items:
+        try:
+            name, iid, itype = item['name'], item['id'], item['type']
+            print(f"Syncing: {name}")
+            
+            if itype == 'file':
+                html = f"<html><body style='margin:0;background:#000'><iframe src='https://abyss.to/e/{iid}' width='100%' height='100%' frameborder='0' allowfullscreen></iframe></body></html>"
+                push_to_gh(f"watch/{iid}.html", html, f"Add {name}")
+                catalog.append({"name": name, "url": f"watch/{iid}.html"})
+            
+            elif itype == 'folder':
+                f_resp = requests.get(f"https://api.abyss.to/v1/resources?key={ABYSS_KEY}&parentId={iid}", timeout=15)
+                eps = f_resp.json().get('items', [])
+                if eps:
+                    ep_data = [{"n": e['name'], "id": e['id']} for e in eps]
+                    html = f"<html><body style='background:#000;color:#fff'><h2 style='text-align:center'>{name}</h2><iframe id='v' src='https://abyss.to/e/{eps[0]['id']}' width='100%' height='70%' frameborder='0' allowfullscreen></iframe><div style='padding:20px'><select style='width:100%;padding:10px' onchange='document.getElementById(\"v\").src=\"https://abyss.to/e/\"+this.value'>{''.join([f'<option value=\"{e[\"id\"]}\">{e[\"name\"]}</option>' for e in eps])}</select></div></body></html>"
+                    push_to_gh(f"series/{iid}.html", html, f"Add {name}")
+                    catalog.append({"name": name, "url": f"series/{iid}.html"})
+            
+            time.sleep(1) # Prevent rate limits
+        except:
+            continue
+
+    # Final Index Creation
+    if catalog:
+        links = "".join([f"<li><a href='{c['url']}' style='color:#00ffff;text-decoration:none;font-size:1.2rem'>{c['name']}</a></li>" for c in catalog])
+        index_html = f"<!DOCTYPE html><html><head><meta name='viewport' content='width=device-width,initial-scale=1.0'><title>Library</title></head><body style='background:#111;color:#fff;font-family:sans-serif;padding:30px'><h1>🎥 My Library</h1><ul>{links}</ul></body></html>"
+        push_to_gh("index.html", index_html, "Update Home Page")
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as e:
+        print(f"Global Crash Prevented: {e}")        res = requests.put(url, headers=headers, json=payload)
         print(f"   - Push {path}: Status {res.status_code}")
         return res.status_code
     except Exception as e:
