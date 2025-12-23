@@ -90,6 +90,62 @@ def main():
         print("No items to add to index.html")
 
 if __name__ == "__main__":
+    main()    api_url = f"https://api.abyss.to/v1/resources?key={ABYSS_API_KEY}&maxResults=100"
+    
+    try:
+        response = requests.get(api_url)
+        print(f"Abyss API Response Status: {response.status_code}")
+        data = response.json()
+    except Exception as e:
+        print(f"CRITICAL ERROR: Failed to connect to Abyss: {e}")
+        exit(1)
+
+    items = data.get('items', [])
+    if not items:
+        print("Warning: No items found in your Abyss account.")
+    
+    catalog = []
+
+    for item in items:
+        name = item.get('name', 'Unknown')
+        iid = item.get('id')
+        itype = item.get('type')
+        
+        print(f"Processing: {name} ({itype})")
+        
+        try:
+            if itype == 'file':
+                html = f"<html><body style='margin:0;background:#000'><iframe src='https://abyss.to/e/{iid}' width='100%' height='100%' frameborder='0' allowfullscreen></iframe></body></html>"
+                push(f"watch/{iid}.html", html, f"Sync Movie: {name}")
+                catalog.append({"name": name, "link": f"watch/{iid}.html", "type": "Movie"})
+            
+            elif itype == 'folder':
+                # Fetch episodes for folder
+                f_url = f"https://api.abyss.to/v1/resources?key={ABYSS_API_KEY}&parentId={iid}"
+                f_resp = requests.get(f_url).json()
+                eps = [{"name": e.get('name'), "id": e.get('id')} for e in f_resp.get('items', [])]
+                
+                if eps:
+                    ep_js = json.dumps(eps)
+                    html = f"<html><body style='background:#111;color:#fff'><h1>{name}</h1><iframe id='p' src='' width='100%' height='500px'></iframe><script>const E={ep_js};function play(i){{document.getElementById('p').src='https://abyss.to/e/'+E[i].id}}play(0);</script></body></html>"
+                    push(f"series/{iid}.html", html, f"Sync Series: {name}")
+                    catalog.append({"name": name, "link": f"series/{iid}.html", "type": "Series"})
+            
+            time.sleep(1) # Safety delay
+        except Exception as e:
+            print(f"Error processing item {name}: {e}")
+
+    # Final Index Update
+    print("Building index.html...")
+    if catalog:
+        links_html = "".join([f'<li><a href="{c["link"]}">{c["name"]}</a> ({c["type"]})</li>' for c in catalog])
+        index_content = f"<!DOCTYPE html><html><body><h1>My Library</h1><ul>{links_html}</ul></body></html>"
+        push("index.html", index_content, "Update Home Page")
+        print("--- Sync Complete ---")
+    else:
+        print("No items to add to index.html")
+
+if __name__ == "__main__":
     main()            catalog.append({"name": name, "link": f"watch/{iid}.html", "type": "Movie"})
         
         elif itype == 'folder':
