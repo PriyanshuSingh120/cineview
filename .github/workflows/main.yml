@@ -1,26 +1,21 @@
 name: AbyssSync
-
 on:
   workflow_dispatch:
   push:
     branches: [main]
-
 jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
+      - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup Python
+      - name: Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.9'
-
-      - name: Install Requirements
+      - name: Deps
         run: pip install requests
-
-      - name: Run Sync
+      - name: Run
         env:
           ABYSS_KEY: ${{ secrets.ABYSS_KEY }}
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
