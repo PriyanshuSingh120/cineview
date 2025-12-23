@@ -1,0 +1,22 @@
+name: Abyss Master Sync
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 * * * *' # Runs every hour
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+      - name: Install Requirements
+        run: pip install requests
+      - name: Execution
+        env:
+          ABYSS_KEY: ${{ secrets.ABYSS_KEY }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: python abyss_bot.py
