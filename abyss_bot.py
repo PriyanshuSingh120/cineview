@@ -4,37 +4,98 @@ import base64
 import json
 import time
 
-# --- CONFIGURATION ---
-ABYSS_API_KEY = os.getenv("ABYSS_KEY")
-GITHUB_TOKEN = os.getenv("GH_TOKEN")
-GITHUB_REPO = os.getenv("GITHUB_REPOSITORY")
+# --- CONFIG ---
+ABYSS_KEY = os.getenv("ABYSS_KEY")
+GH_TOKEN = os.getenv("GH_TOKEN")
+GH_REPO = os.getenv("GITHUB_REPOSITORY")
+
+def get_existing_files():
+    """Fetches list of already synced file IDs from the repo to avoid duplicates."""
+    existing_ids = set()
+    url = f"https://api.github.com/repos/{GH_REPO}/contents/watch"
+    headers = {"Authorization": f"token {GH_TOKEN}", "Accept": "application/vnd.github.v3+json"}
+    
+    r = requests.get(url, headers=headers)
+    if r.status_code == 200:
+        files = r.json()
+        for f in files:
+            # Extract ID from filename (e.g., "abc123.html" -> "abc123")
+            file_id = f['name'].replace('.html', '')
+            existing_ids.add(file_id)
+    return existing_ids
 
 def push_to_github(path, content, msg):
-    """Pushes a file to GitHub via API"""
+    """Pushes new content to GitHub."""
+    url = f"https://api.github.com/repos/{GH_REPO}/contents/{path}"
+    headers = {"Authorization": f"token {GH_TOKEN}", "Accept": "application/vnd.github.v3+json"}
+    
+    # Get SHA if updating index.html
+    r = requests.get(url, headers=headers)
+    sha = r.json().get('sha') if r.status_code == 200 else None
+    
+    payload = {
+        "message": msg,
+        "content": base64.b64encode(content.encode('utf-8')).decode('utf-8')
+    }
+    if sha: payload["sha"] = sha
+    
+    res = requests.put(url, headers=headers, json=payload)
+    print(f"Synced {path}: Status {res.status_code}")
+
+def main():
+    if not ABYSS_KEY or not GH_TOKEN:
+        print("Error: Missing Secrets.")
+        return
+
+    print("Checking for existing files in repository...")
+    synced_ids = get_existing_files()
+    print(f"Found {len(synced_ids)} files already in library.")
+
+    print("Fetching resources from Abyss...")
     try:
-        url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{path}"
-        headers = {
-            "Authorization": f"token {GITHUB_TOKEN}",
-            "Accept": "application/vnd.github.v3+json"
-        }
-        
-        # Get SHA if file exists
-        r = requests.get(url, headers=headers)
-        sha = r.json().get('sha') if r.status_code == 200 else None
-        
-        payload = {
-            "message": msg,
-            "content": base64.b64encode(content.encode('utf-8')).decode('utf-8')
-        }
-        if sha:
-            payload["sha"] = sha
-            
-        res = requests.put(url, headers=headers, json=payload)
-        print(f"   [GitHub API] {path} -> Status: {res.status_code}")
-        return res.status_code
+        resp = requests.get(f"https://api.abyss.to/v1/resources?key={ABYSS_KEY}&maxResults=100")
+        items = resp.json().get('items', [])
     except Exception as e:
-        print(f"   [GitHub Error] Failed to push {path}: {str(e)}")
-        return None
+        print(f"API Error: {e}")
+        return
+
+    new_count = 0
+    catalog = []
+
+    for item in items:
+        name = item.get('name', 'Unknown')
+        iid = item.get('id')
+        itype = item.get('type')
+
+        if not iid: continue
+
+        # --- THE "ONLY NEW" LOGIC ---
+        if itype == 'file':
+            link = f"watch/{iid}.html"
+            catalog.append({"name": name, "url": link})
+            
+            if iid in synced_ids:
+                print(f"Skipping (Already Exists): {name}")
+                continue
+            
+            # If not in synced_ids, it's a new upload!
+            print(f"New Upload Detected: {name}")
+            html = f"<html><body style='margin:0;background:#000'><iframe src='https://abyss.to/e/{iid}' width='100%' height='100%' frameborder='0' allowfullscreen></iframe></body></html>"
+            push_to_github(link, html, f"New Movie: {name}")
+            new_count += 1
+            time.sleep(1)
+
+    # Always rebuild index.html to show full library including new items
+    if catalog:
+        print("Rebuilding Library Index...")
+        links_html = "".join([f'<li><a href="{c["url"]}">{c["name"]}</a></li>' for c in catalog])
+        index_html = f"<!DOCTYPE html><html><body><h1>CineView Library</h1><ul>{links_html}</ul></body></html>"
+        push_to_github("index.html", index_html, "Refresh Index with new content")
+
+    print(f"Finished. Added {new_count} new files.")
+
+if __name__ == "__main__":
+    main()        return None
 
 def main():
     print("--- SYNC START ---")
