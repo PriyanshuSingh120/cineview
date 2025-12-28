@@ -6,115 +6,99 @@ GH_TOKEN = os.getenv("GH_TOKEN")
 GH_REPO = os.getenv("GITHUB_REPOSITORY")
 
 def push_github(path, content, msg):
-    """Safely pushes or updates a file on GitHub."""
+    """Pushes or updates a file on GitHub."""
     url = f"https://api.github.com/repos/{GH_REPO}/contents/{path}"
-    headers = {
-        "Authorization": f"token {GH_TOKEN}",
-        "Accept": "application/vnd.github.v3+json"
-    }
+    headers = {"Authorization": f"token {GH_TOKEN}", "Accept": "application/vnd.github.v3+json"}
     
-    # Check for existing file to get its SHA (required for updating)
-    try:
-        r = requests.get(url, headers=headers)
-        sha = r.json().get('sha') if r.status_code == 200 else None
-    except:
-        sha = None
+    r = requests.get(url, headers=headers)
+    sha = r.json().get('sha') if r.status_code == 200 else None
     
     payload = {
         "message": msg,
         "content": base64.b64encode(content.encode('utf-8')).decode('utf-8')
     }
-    if sha:
-        payload["sha"] = sha
+    if sha: payload["sha"] = sha
     
     res = requests.put(url, headers=headers, json=payload)
     print(f"   [GitHub] {path} -> Status: {res.status_code}")
     return res.status_code
 
 def main():
-    print("--- STARTING REPAIR SYNC ---")
-    
+    print("--- STARTING ADVANCED CINEVIEW SYNC ---")
     if not ABYSS_KEY or not GH_TOKEN:
-        print("CRITICAL: Secrets missing! Ensure ABYSS_KEY and GH_TOKEN are set.")
-        return
+        print("CRITICAL: Secrets missing!"); return
 
-    # 1. Fetch Resources from Abyss
-    print("Fetching from Abyss API...")
+    # 1. Fetch Resources
     try:
         url = f"https://api.abyss.to/v1/resources?key={ABYSS_KEY}&maxResults=100"
         resp = requests.get(url, timeout=20)
-        data = resp.json()
-        items = data.get('items', [])
-        print(f"Total items found: {len(items)}")
+        items = resp.json().get('items', [])
     except Exception as e:
-        print(f"API Connection Error: {e}")
-        return
+        print(f"API Error: {e}"); return
 
     catalog = []
 
     # 2. Process Items
     for item in items:
-        name = item.get('name', 'Untitled Video')
+        name = item.get('name', 'Untitled')
         iid = item.get('id')
         is_dir = item.get('isDir', False)
+        # Using a generic placeholder for posters if Abyss doesn't provide one
+        poster = "https://via.placeholder.com/500x750?text=No+Poster+Found"
         
         if not iid: continue
 
-        # The short.icu URL you mentioned
-        embed_url = f"https://short.icu/{iid}"
-        
         if not is_dir:
-            # MOVIE: Create player file
-            path = f"watch/{iid}.html"
-            catalog.append({"name": name, "url": path, "type": "Movie"})
+            # MOVIE: Using Dhurandhar.html Template
+            path = f"Insider/{iid}.html"
+            catalog.append({"name": name, "url": path, "img": poster, "type": "Movie"})
             
-            html = f"<!DOCTYPE html><html><head><title>{name}</title><meta name='viewport' content='width=device-width,initial-scale=1.0'><style>body{{margin:0;background:#000;overflow:hidden}}iframe{{width:100vw;height:100vh;border:none}}</style></head><body><iframe src='{embed_url}' allowfullscreen></iframe></body></html>"
+            html = f"""<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>{name} - CineView</title><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet"><style>:root {{ --bg-dark: #121212; --surface-dark: #1e1e1e; --accent-main: #00bcd4; --text-light: #e0e0e0; --text-muted: #a0a0a0; }} body {{ background-color: var(--bg-dark); color: var(--text-light); font-family: 'Inter', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }} .video-player-container {{ width: 100%; max-width: 900px; border-radius: 16px; overflow: hidden; box-shadow: 0 15px 50px rgba(0, 0, 0, 0.7), 0 0 5px rgba(0, 188, 212, 0.4); background-color: var(--surface-dark); }} .video-frame-area {{ position: relative; width: 100%; padding-bottom: 56.25%; }} .video-frame-area iframe {{ position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }} .player-content-area {{ padding: 20px 30px; background-color: var(--surface-dark); }} .player-title {{ font-size: 1.5rem; font-weight: 700; margin-bottom: 5px; }} .player-metadata {{ font-size: 0.85rem; color: var(--text-muted); display: flex; gap: 25px; }}</style></head><body><div class="video-player-container"><div class="video-frame-area"><iframe src="https://short.icu/{iid}" allowfullscreen></iframe></div><div class="player-content-area"><div class="player-title">{name}</div><div class="player-metadata"><span>HD Streaming</span><span>2025</span><span>CineView Hub</span></div></div></div></body></html>"""
             push_github(path, html, f"Sync Movie: {name}")
-            time.sleep(1) # Delay for stability
-        else:
-            # SERIES: Create folder index
-            path = f"series/{iid}.html"
-            catalog.append({"name": name, "url": path, "type": "Series"})
             
-            # Fetch folder contents
-            try:
-                f_url = f"https://api.abyss.to/v1/resources?key={ABYSS_KEY}&folderId={iid}"
-                f_resp = requests.get(f_url, timeout=15).json()
-                children = f_resp.get('items', [])
-                ep_links = "".join([f'<li><a href="https://short.icu/{c.get("id")}" style="color:#a0a0ff">{c.get("name")}</a></li>' for c in children])
-                
-                html = f"<html><body style='background:#111;color:#fff;font-family:sans-serif;padding:20px'><h1>{name}</h1><ul>{ep_links if ep_links else '<li>No items</li>'}</ul><br><a href='../index.html' style='color:#fff'>Back</a></body></html>"
-                push_github(path, html, f"Sync Series: {name}")
-            except:
-                print(f"Error fetching folder {name}")
+        else:
+            # SERIES: Using got2.html Template
+            path = f"episodes/{iid}.html"
+            catalog.append({"name": name, "url": path, "img": poster, "type": "Series"})
+            
+            # Fetch Episodes
+            f_resp = requests.get(f"https://api.abyss.to/v1/resources?key={ABYSS_KEY}&folderId={iid}").json()
+            children = f_resp.get('items', [])
+            
+            ep_js_array = []
+            ep_options = ""
+            for idx, c in enumerate(children):
+                ep_js_array.append({
+                    "index": idx,
+                    "name": c.get('name'),
+                    "videoUrl": f"https://short.icu/{c.get('id')}",
+                    "description": f"Streaming episode: {c.get('name')}"
+                })
+                ep_options += f'<option value="{idx}">E{idx+1}: {c.get("name")}</option>'
 
-    # 3. FORCE REBUILD INDEX.HTML
-    print("Updating Homepage (index.html)...")
-    list_items = "".join([f'<li><a href="{c["url"]}">{c["name"]}</a> <small style="opacity:0.5">({c["type"]})</small></li>' for c in catalog])
+            html = f"""<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>{name} - CineView</title><link rel="stylesheet" href="../style.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"></head><body><div class="site-title-banner"><h1>{name}</h1><p class="site-details-info">{len(children)} Episodes | CineView Original</p></div><main><section class="episode-page-content"><div class="player-wrapper"><div class="video-container"><iframe id="episode-iframe" src="" allowfullscreen></iframe></div><div class="episode-title-bar"><div class="episode-info-left"><h2 id="current-episode-title">Episode 1</h2><span id="current-episode-number">Loading...</span></div><div class="episode-selector-dropdown"><select id="episode-select" onchange="changeEpisode(this.value);">{ep_options}</select></div></div></div></section></main><script>const EPISODES = {json.dumps(ep_js_array)}; function changeEpisode(i) {{ const e = EPISODES[parseInt(i)]; document.getElementById('episode-iframe').src = e.videoUrl; document.getElementById('current-episode-title').textContent = e.name; document.getElementById('current-episode-number').textContent = `Episode ${parseInt(i)+1} of ${ep_js_array.length}`; }} document.addEventListener('DOMContentLoaded', () => changeEpisode(0));</script></body></html>"""
+            push_github(path, html, f"Sync Series: {name}")
+
+    # 3. Build Homepage (index.html)
+    grid_html = ""
+    for c in catalog:
+        grid_html += f"""
+        <a href="{c['url']}" class="movie-link">
+            <div class="movie-card">
+                <div class="movie-poster-container">
+                    <img src="{c['img']}" alt="{c['name']}" class="movie-poster" loading="lazy">
+                </div>
+                <div class="movie-info">
+                    <h3>{c['name']}</h3>
+                    <p>{c['type']} | 2025 | CineView</p>
+                </div>
+            </div>
+        </a>"""
+
+    # Final Index Assembly
+    index_full = f"""<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>🎬 CineView - Hub</title><link rel="stylesheet" href="style.css"></head><body><header class="main-header"><div class="logo">CineView</div></header><main><section class="movie-section"><h2 class="section-title">✨ New Uploads</h2><div class="movie-grid">{grid_html}</div></section></main><footer><p>&copy; 2025 CineView</p></footer></body></html>"""
     
-    index_html = f"""<!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>CineView Library</title>
-        <style>
-            body {{ background:#0f0f1d; color:#fff; font-family:sans-serif; padding:20px; max-width:700px; margin:0 auto; }}
-            h1 {{ color:#a0a0ff; text-align:center; border-bottom:1px solid #333; padding-bottom:15px; }}
-            ul {{ list-style:none; padding:0; }}
-            li {{ background:#1a1a2e; margin-bottom:10px; padding:15px; border-radius:10px; border:1px solid #333; display:flex; justify-content:space-between; align-items:center; }}
-            a {{ color:#fff; text-decoration:none; font-weight:bold; flex-grow:1; }}
-            li:hover {{ border-color:#a0a0ff; }}
-        </style>
-    </head>
-    <body>
-        <h1>🎥 CINEVIEW</h1>
-        <ul>{list_items if list_items else '<li>No videos found in account.</li>'}</ul>
-    </body>
-    </html>"""
-    
-    push_github("index.html", index_html, f"Refresh Library: {len(catalog)} items")
-    print("--- SYNC FINISHED ---")
+    push_github("index.html", index_full, "System Refresh: Full Grid")
 
 if __name__ == "__main__":
     main()
