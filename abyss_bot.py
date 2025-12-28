@@ -117,7 +117,8 @@ def main():
     print("--- SYNC FINISHED ---")
 
 if __name__ == "__main__":
-    main()    if not ABYSS_KEY or not GH_TOKEN:
+    main()   
+    if not ABYSS_KEY or not GH_TOKEN:
         print("CRITICAL: Secrets missing! Ensure ABYSS_KEY and GH_TOKEN are set.")
         return
 
