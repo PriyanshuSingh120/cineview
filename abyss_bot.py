@@ -6,11 +6,11 @@ GH_TOKEN = os.getenv("GH_TOKEN")
 GH_REPO = os.getenv("GITHUB_REPOSITORY")
 
 def push_github(path, content, msg):
-    """Safely pushes a file to GitHub"""
+    """Pushes file to GitHub. Overwrites if exists."""
     url = f"https://api.github.com/repos/{GH_REPO}/contents/{path}"
     headers = {"Authorization": f"token {GH_TOKEN}", "Accept": "application/vnd.github.v3+json"}
     
-    # Check for existing file SHA
+    # Always try to get SHA to ensure we can overwrite/update
     r = requests.get(url, headers=headers)
     sha = r.json().get('sha') if r.status_code == 200 else None
     
@@ -21,20 +21,129 @@ def push_github(path, content, msg):
     if sha: payload["sha"] = sha
     
     res = requests.put(url, headers=headers, json=payload)
-    print(f"[{res.status_code}] {path}")
+    print(f"[{res.status_code}] Syncing: {path}")
     return res.status_code
 
 def main():
-    print("--- SYNC STARTING ---")
+    print("--- CINEVIEW REPAIR SYNC START ---")
     if not ABYSS_KEY or not GH_TOKEN:
         print("CRITICAL: Secrets missing!"); return
 
-    # 1. Fetch Abyss Resources
-    # Using your API docs: /v1/resources?key={apiKey}
-    print("Fetching from Abyss...")
+    # 1. Fetch Resources
+    print("Fetching resources from Abyss API...")
     try:
+        # We increase maxResults to 100 to ensure we catch everything
         url = f"https://api.abyss.to/v1/resources?key={ABYSS_KEY}&maxResults=100"
         resp = requests.get(url)
+        data = resp.json()
+        items = data.get('items', [])
+        print(f"Found {len(items)} items in Abyss.")
+    except Exception as e:
+        print(f"API Error: {e}"); return
+
+    catalog = []
+    
+    # 2. Process Items
+    for item in items:
+        name = item.get('name', 'Unknown Title')
+        iid = item.get('id')
+        is_dir = item.get('isDir', False)
+        
+        if not iid: continue
+
+        # Construct the correct Link
+        # Based on your feedback, we use the short.icu domain
+        # Most Abyss-based systems use the ID at the end of the short domain
+        embed_url = f"https://short.icu/{iid}"
+        
+        if not is_dir:
+            # MOVIE HANDLING
+            file_path = f"watch/{iid}.html"
+            catalog.append({"name": name, "url": file_path, "type": "Movie"})
+            
+            # Create/Update the player page
+            html = f"""<!DOCTYPE html>
+            <html>
+            <head>
+                <title>{name}</title>
+                <meta name="viewport" content="width=device-width,initial-scale=1.0">
+                <style>body{{margin:0;background:#000;overflow:hidden}}iframe{{width:100vw;height:100vh;border:none}}</style>
+            </head>
+            <body>
+                <iframe src="{embed_url}" allowfullscreen></iframe>
+            </body>
+            </html>"""
+            push_github(file_path, html, f"Update Player: {name}")
+            time.sleep(0.5) # Short delay to avoid GitHub API abuse
+            
+        else:
+            # SERIES HANDLING (Folders)
+            file_path = f"series/{iid}.html"
+            catalog.append({"name": name, "url": file_path, "type": "Series"})
+            
+            # Fetch folder items
+            f_url = f"https://api.abyss.to/v1/resources?key={ABYSS_KEY}&folderId={iid}"
+            try:
+                f_resp = requests.get(f_url).json()
+                children = f_resp.get('items', [])
+                episodes_html = ""
+                for c in children:
+                    ep_id = c.get('id')
+                    ep_name = c.get('name')
+                    episodes_html += f'<li><a href="https://short.icu/{ep_id}" target="_blank">{ep_name}</a></li>'
+                
+                html = f"""<html>
+                <body style="background:#111;color:#fff;font-family:sans-serif;padding:20px">
+                    <h1>{name}</h1>
+                    <ul style="line-height:2">{episodes_html if episodes_html else "<li>No items found</li>"}</ul>
+                    <br><a href="../index.html" style="color:#a0a0ff">Back to Library</a>
+                </body>
+                </html>"""
+                push_github(file_path, html, f"Update Series: {name}")
+            except:
+                print(f"Failed to fetch folder: {name}")
+
+    # 3. FORCE REFRESH INDEX.HTML
+    # We do this every single time to ensure it is never outdated
+    print("Force-building index.html...")
+    
+    list_items = ""
+    for c in catalog:
+        list_items += f"""
+        <li>
+            <a href="{c['url']}">{c['name']}</a>
+            <span style="font-size:10px; background:#a0a0ff; color:#000; padding:2px 5px; border-radius:3px; margin-left:10px;">{c['type']}</span>
+        </li>"""
+
+    index_html = f"""<!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>CineView Library</title>
+        <style>
+            body {{ background: #0f0f1d; color: #fff; font-family: sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; }}
+            h1 {{ color: #a0a0ff; text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; }}
+            ul {{ list-style: none; padding: 0; }}
+            li {{ background: #1a1a2e; margin-bottom: 10px; padding: 15px; border-radius: 8px; border: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }}
+            a {{ color: #fff; text-decoration: none; font-weight: bold; flex-grow: 1; }}
+            li:hover {{ border-color: #a0a0ff; }}
+        </style>
+    </head>
+    <body>
+        <h1>🎥 CINEVIEW</h1>
+        <ul>{list_items if list_items else "<li>No videos found in Abyss account.</li>"}</ul>
+        <div style="text-align:center; font-size:10px; opacity:0.3; margin-top:50px;">Synced via Abyss API</div>
+    </body>
+    </html>"""
+    
+    # We use a unique commit message to see it clearly in GitHub history
+    status = push_github("index.html", index_html, f"Manual Refresh: {len(catalog)} items")
+    print(f"Final Index Status: {status}")
+    print("--- SYNC COMPLETE ---")
+
+if __name__ == "__main__":
+    main()        resp = requests.get(url)
         data = resp.json()
         items = data.get('items', [])
     except Exception as e:
