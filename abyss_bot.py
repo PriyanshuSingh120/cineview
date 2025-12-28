@@ -41,7 +41,6 @@ def main():
     # 1. Fetch Resources from Abyss
     print("Fetching from Abyss API...")
     try:
-        # Based on your docs: /v1/resources?key={apiKey}
         url = f"https://api.abyss.to/v1/resources?key={ABYSS_KEY}&maxResults=100"
         resp = requests.get(url, timeout=20)
         data = resp.json()
@@ -69,7 +68,7 @@ def main():
             path = f"watch/{iid}.html"
             catalog.append({"name": name, "url": path, "type": "Movie"})
             
-            html = f"""<!DOCTYPE html><html><head><title>{name}</title><meta name='viewport' content='width=device-width,initial-scale=1.0'><style>body{{margin:0;background:#000;overflow:hidden}}iframe{{width:100vw;height:100vh;border:none}}</style></head><body><iframe src="{embed_url}" allowfullscreen></iframe></body></html>"""
+            html = f"<!DOCTYPE html><html><head><title>{name}</title><meta name='viewport' content='width=device-width,initial-scale=1.0'><style>body{{margin:0;background:#000;overflow:hidden}}iframe{{width:100vw;height:100vh;border:none}}</style></head><body><iframe src='{embed_url}' allowfullscreen></iframe></body></html>"
             push_github(path, html, f"Sync Movie: {name}")
             time.sleep(1) # Delay for stability
         else:
@@ -84,7 +83,7 @@ def main():
                 children = f_resp.get('items', [])
                 ep_links = "".join([f'<li><a href="https://short.icu/{c.get("id")}" style="color:#a0a0ff">{c.get("name")}</a></li>' for c in children])
                 
-                html = f"""<html><body style="background:#111;color:#fff;font-family:sans-serif;padding:20px"><h1>{name}</h1><ul>{ep_links if ep_links else "<li>No items</li>"}</ul><br><a href="../index.html" style="color:#fff">Back</a></body></html>"""
+                html = f"<html><body style='background:#111;color:#fff;font-family:sans-serif;padding:20px'><h1>{name}</h1><ul>{ep_links if ep_links else '<li>No items</li>'}</ul><br><a href='../index.html' style='color:#fff'>Back</a></body></html>"
                 push_github(path, html, f"Sync Series: {name}")
             except:
                 print(f"Error fetching folder {name}")
@@ -110,7 +109,7 @@ def main():
     </head>
     <body>
         <h1>🎥 CINEVIEW</h1>
-        <ul>{list_items if list_items else "<li>No videos found in account.</li>"}</ul>
+        <ul>{list_items if list_items else '<li>No videos found in account.</li>'}</ul>
     </body>
     </html>"""
     
@@ -118,115 +117,7 @@ def main():
     print("--- SYNC FINISHED ---")
 
 if __name__ == "__main__":
-    main()            time.sleep(1) # Delay for stability
-        else:
-            # SERIES: Create folder index
-            path = f"series/{iid}.html"
-            catalog.append({"name": name, "url": path, "type": "Series"})
-            
-            # Fetch folder contents
-            try:
-                f_url = f"https://api.abyss.to/v1/resources?key={ABYSS_KEY}&folderId={iid}"
-                f_resp = requests.get(f_url, timeout=15).json()
-                children = f_resp.get('items', [])
-                ep_links = "".join([f'<li><a href="https://short.icu/{c.get("id")}" style="color:#a0a0ff">{c.get("name")}</a></li>' for c in children])
-                
-                html = f"""<html><body style="background:#111;color:#fff;font-family:sans-serif;padding:20px"><h1>{name}</h1><ul>{ep_links if ep_links else "<li>No items</li>"}</ul><br><a href="../index.html" style="color:#fff">Back</a></body></html>"""
-                push_github(path, html, f"Sync Series: {name}")
-            except:
-                print(f"Error fetching folder {name}")
-
-    # 3. FORCE REBUILD INDEX.HTML
-    print("Updating Homepage (index.html)...")
-    list_items = "".join([f'<li><a href="{c["url"]}">{c["name"]}</a> <small style="opacity:0.5">({c["type"]})</small></li>' for c in catalog])
-    
-    index_html = f"""<!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>CineView Library</title>
-        <style>
-            body {{ background:#0f0f1d; color:#fff; font-family:sans-serif; padding:20px; max-width:700px; margin:0 auto; }}
-            h1 {{ color:#a0a0ff; text-align:center; border-bottom:1px solid #333; padding-bottom:15px; }}
-            ul {{ list-style:none; padding:0; }}
-            li {{ background:#1a1a2e; margin-bottom:10px; padding:15px; border-radius:10px; border:1px solid #333; display:flex; justify-content:space-between; align-items:center; }}
-            a {{ color:#fff; text-decoration:none; font-weight:bold; flex-grow:1; }}
-            li:hover {{ border-color:#a0a0ff; }}
-        </style>
-    </head>
-    <body>
-        <h1>🎥 CINEVIEW</h1>
-        <ul>{list_items if list_items else "<li>No videos found in account.</li>"}</ul>
-    </body>
-    </html>"""
-    
-    push_github("index.html", index_html, f"Refresh Library: {len(catalog)} items")
-    print("--- SYNC FINISHED ---")
-
-if __name__ == "__main__":
-    main()        resp = requests.get(url)
-        data = resp.json()
-        items = data.get('items', [])
-        print(f"Found {len(items)} items in Abyss.")
-    except Exception as e:
-        print(f"API Error: {e}"); return
-
-    catalog = []
-    
-    # 2. Process Items
-    for item in items:
-        name = item.get('name', 'Unknown Title')
-        iid = item.get('id')
-        is_dir = item.get('isDir', False)
-        
-        if not iid: continue
-
-        # Construct the correct Link
-        # Based on your feedback, we use the short.icu domain
-        # Most Abyss-based systems use the ID at the end of the short domain
-        embed_url = f"https://short.icu/{iid}"
-        
-        if not is_dir:
-            # MOVIE HANDLING
-            file_path = f"watch/{iid}.html"
-            catalog.append({"name": name, "url": file_path, "type": "Movie"})
-            
-            # Create/Update the player page
-            html = f"""<!DOCTYPE html>
-            <html>
-            <head>
-                <title>{name}</title>
-                <meta name="viewport" content="width=device-width,initial-scale=1.0">
-                <style>body{{margin:0;background:#000;overflow:hidden}}iframe{{width:100vw;height:100vh;border:none}}</style>
-            </head>
-            <body>
-                <iframe src="{embed_url}" allowfullscreen></iframe>
-            </body>
-            </html>"""
-            push_github(file_path, html, f"Update Player: {name}")
-            time.sleep(0.5) # Short delay to avoid GitHub API abuse
-            
-        else:
-            # SERIES HANDLING (Folders)
-            file_path = f"series/{iid}.html"
-            catalog.append({"name": name, "url": file_path, "type": "Series"})
-            
-            # Fetch folder items
-            f_url = f"https://api.abyss.to/v1/resources?key={ABYSS_KEY}&folderId={iid}"
-            try:
-                f_resp = requests.get(f_url).json()
-                children = f_resp.get('items', [])
-                episodes_html = ""
-                for c in children:
-                    ep_id = c.get('id')
-                    ep_name = c.get('name')
-                    episodes_html += f'<li><a href="https://short.icu/{ep_id}" target="_blank">{ep_name}</a></li>'
-                
-                html = f"""<html>
-                <body style="background:#111;color:#fff;font-family:sans-serif;padding:20px">
-                    <h1>{name}</h1>
-                    <ul style="line-height:2">{episodes_html if episodes_html else "<li>No items found</li>"}</ul>
+    main()found</li>"}</ul>
                     <br><a href="../index.html" style="color:#a0a0ff">Back to Library</a>
                 </body>
                 </html>"""
