@@ -2,59 +2,58 @@ name: CineView Elite Sync
 
 on:
   schedule:
-    - cron: '0 * * * *' # Automatically runs every hour
-  workflow_dispatch: # Allows you to trigger the update instantly via the Actions tab
+    - cron: '0 * * * *' # Every hour
+  workflow_dispatch: # Immediate manual trigger
 
 jobs:
-  sync:
+  sync-job:
     runs-on: ubuntu-latest
     
-    # Required to allow the bot to save HTML files back to your repository
+    # Critical for allowing the bot to save files
     permissions:
       contents: write
 
     steps:
-      - name: Checkout Repository
+      - name: 📥 Checkout Code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Fetches full history for a safe push
+          fetch-depth: 0
 
-      - name: Set up Python
+      - name: 🐍 Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
 
-      - name: Install Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install requests
+      - name: 📦 Install Requirements
+        run: pip install requests
 
-      - name: Run CineView Sync Bot
+      - name: 🚀 Run Sync Script
         env:
-          # Abyss API Key for fetching movies
           ABYSS_KEY: ${{ secrets.ABYSS_KEY }}
-          # GitHub Token for pushing files
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
-          # Your Custom AI URL (e.g., Gemini Proxy or OpenRouter)
           CUSTOM_API_URL: ${{ secrets.CUSTOM_API_URL }}
-          # Your Custom AI API Key
           CUSTOM_API_KEY: ${{ secrets.CUSTOM_API_KEY }}
-          # The repository identifier
           GITHUB_REPOSITORY: ${{ github.repository }}
-        run: python abyss_bot.py
+        run: |
+          if [ -f "abyss_bot.py" ]; then
+            python abyss_bot.py
+          else
+            echo "Error: abyss_bot.py not found in root directory!"
+            exit 1
+          fi
 
-      - name: Commit and Push changes
+      - name: 💾 Commit & Push Changes
         run: |
           git config --global user.name "CineView-Bot"
           git config --global user.email "bot@cineview.com"
           
-          # Stage all generated movie and episode files
+          # Stage specific folders and files
           git add Insider/*.html episodes/*.html index.html posters.json || true
           
-          # Only push if changes were actually made
+          # Check for changes
           if git diff --staged --quiet; then
-            echo "No new movies found. Skipping push."
+            echo "No new content to sync."
           else
-            git commit -m "Elite Sync: Sorted episodes, filtered titles & updated UI"
+            git commit -m "Elite Sync: Added new content and updated UI"
             git push origin HEAD:${{ github.ref }}
           fi
