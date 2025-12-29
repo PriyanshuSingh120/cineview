@@ -1,24 +1,23 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=0"><title>CineView Hub</title><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet"><style>
     :root{--bg:#010103;--card:#0d0d14;--accent:#00d2ff;--glass:rgba(10,10,15,0.85);}
     body{background:var(--bg);color:#fff;font-family:'Plus Jakarta Sans',sans-serif;margin:0;}
-    header{position:fixed;top:0;width:100%;z-index:100;background:var(--glass);backdrop-filter:blur(25px);padding:15px 20px;box-sizing:border-box;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;flex-direction:column;align-items:center;}
-    .logo{font-size:1.3rem;font-weight:900;color:var(--accent);letter-spacing:2px;margin-bottom:12px;}
+    header{position:fixed;top:0;width:100%;z-index:100;background:var(--glass);backdrop-filter:blur(25px);padding:15px;box-sizing:border-box;border-bottom:1px solid #222;display:flex;flex-direction:column;align-items:center;}
+    .logo{font-size:1.3rem;font-weight:900;color:var(--accent);letter-spacing:2px;margin-bottom:10px;text-shadow:0 0 10px rgba(0,210,255,0.5);}
     .s-box{width:100%;max-width:500px;}
-    input{width:100%;padding:14px 22px;border-radius:15px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#fff;outline:none;font-size:16px;box-sizing:border-box;transition:0.3s;}
-    input:focus{border-color:var(--accent);box-shadow:0 0 15px rgba(0,210,255,0.2);}
-    main{margin-top:145px;padding:15px;}
-    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:25px;max-width:1400px;margin:auto;}
-    .m-link{text-decoration:none;}
-    .m-card{background:var(--card);border-radius:22px;overflow:hidden;border:1px solid #1a1a25;transition:0.3s;height:100%;box-shadow:0 15px 40px rgba(0,0,0,0.5);}
-    .p-con{position:relative;aspect-ratio:2/3;overflow:hidden;background:#111;}
+    input{width:100%;padding:14px 20px;border-radius:15px;border:1px solid #333;background:rgba(255,255,255,0.05);color:#fff;outline:none;font-size:16px;box-sizing:border-box;}
+    main{margin-top:140px;padding:15px;}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:20px;max-width:1400px;margin:auto;}
+    .m-card{background:var(--card);border-radius:22px;overflow:hidden;border:1px solid #1a1a25;transition:0.3s;height:100%;box-shadow:0 15px 40px rgba(0,0,0,0.5);display:flex;flex-direction:column;}
+    .p-con{position:relative;width:100%;aspect-ratio:2/3;overflow:hidden;}
     .p-img{width:100%;height:100%;object-fit:cover;transition:0.6s;}
     .m-card:hover .p-img{transform:scale(1.08);}
-    .badge{position:absolute;top:10px;left:10px;background:rgba(0,0,0,0.6);backdrop-filter:blur(10px);padding:5px 10px;border-radius:10px;font-size:0.7rem;font-weight:bold;color:var(--accent);border:1px solid rgba(0,210,255,0.2);}
-    .type{position:absolute;bottom:12px;right:12px;background:var(--accent);color:#000;padding:3px 10px;border-radius:8px;font-size:0.65rem;font-weight:900;text-transform:uppercase;}
-    .m-info{padding:18px;} h3{margin:0;font-size:0.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff;} p{margin:8px 0 0;font-size:0.8rem;color:#777;}
-    @media(max-width:600px){.grid{grid-template-columns:repeat(2,1fr);gap:15px;} .logo{font-size:1.1rem;}}
+    .badge{position:absolute;top:10px;left:10px;background:rgba(0,0,0,0.7);backdrop-filter:blur(5px);padding:5px 10px;border-radius:10px;font-size:0.7rem;font-weight:bold;color:var(--accent);border:1px solid rgba(0,210,255,0.2);}
+    .type{position:absolute;bottom:12px;right:12px;background:var(--accent);color:#000;padding:3px 10px;border-radius:8px;font-size:0.6rem;font-weight:900;text-transform:uppercase;}
+    .m-info{padding:15px;flex-grow:1;} h3{margin:0;font-size:0.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff;} p{margin:5px 0 0;font-size:0.8rem;color:#777;}
+    .m-link{text-decoration:none;}
+    @media(max-width:600px){.grid{grid-template-columns:repeat(2,1fr);gap:12px;} .grid{min-width:0;}}
     </style></head><body>
-    <header><div class="logo">CINEVIEW</div><div class="s-box"><input type="text" id="sb" placeholder="Search premium library..." oninput="sf()"></div></header>
+    <header><div class="logo">CINEVIEW</div><div class="s-box"><input type="text" id="sb" placeholder="Search elite library..." oninput="sf()"></div></header>
     <main><div class="grid" id="mg">
     <a href="episodes/X6Tl9NDMG.html" class="m-link" data-title="game of thrones season 3">
         <div class="m-card">
@@ -55,19 +54,6 @@
             </div>
             <div class="m-info">
                 <h3>game of thrones season 1</h3>
-                <p>2025</p>
-            </div>
-        </div>
-    </a>
-    <a href="episodes/RFJ4LRgqp.html" class="m-link" data-title="stranger things 3">
-        <div class="m-card">
-            <div class="p-con">
-                <img src="https://image.tmdb.org/t/p/w500/cVxVGwHce6xnW8UaVUggaPXbmoE.jpg" class="p-img" loading="lazy">
-                <div class="badge">⭐ 8.6</div>
-                <div class="type">Series</div>
-            </div>
-            <div class="m-info">
-                <h3>Stranger things 3</h3>
                 <p>2025</p>
             </div>
         </div>
@@ -124,15 +110,15 @@
             </div>
         </div>
     </a>
-    <a href="episodes/VTM2evHuc.html" class="m-link" data-title="kapil">
+    <a href="episodes/VTM2evHuc.html" class="m-link" data-title="the kapil sharma show season 3">
         <div class="m-card">
             <div class="p-con">
-                <img src="None" class="p-img" loading="lazy">
-                <div class="badge">⭐ 0</div>
+                <img src="https://via.placeholder.com/500x750?text=The Kapil Sharma Show season 3" class="p-img" loading="lazy">
+                <div class="badge">⭐ N/A</div>
                 <div class="type">Series</div>
             </div>
             <div class="m-info">
-                <h3>kapil</h3>
+                <h3>The Kapil Sharma Show season 3</h3>
                 <p>2025</p>
             </div>
         </div>
@@ -331,6 +317,19 @@
                 <p>2025</p>
             </div>
         </div>
+    </a>
+    <a href="Insider/b_2_gAfH8.html" class="m-link" data-title="it.2017.1080p.bluray.hindi.5.1-english.5.1.esub.x264-hdhub4u.ms.mkv">
+        <div class="m-card">
+            <div class="p-con">
+                <img src="https://via.placeholder.com/500x750?text=It.2017.1080p.BluRay.Hindi.5.1-English.5.1.ESub.x264-HDHub4u.Ms.mkv" class="p-img" loading="lazy">
+                <div class="badge">⭐ N/A</div>
+                <div class="type">Movie</div>
+            </div>
+            <div class="m-info">
+                <h3>It.2017.1080p.BluRay.Hindi.5.1-English.5.1.ESub.x264-HDHub4u.Ms.mkv</h3>
+                <p>2025</p>
+            </div>
+        </div>
     </a></div></main>
-    <script>function sf(){const v=document.getElementById('sb').value.toLowerCase();document.querySelectorAll('.m-link').forEach(c=>c.style.display=c.dataset.title.includes(v)?'block':'none')}</script>
+    <script>function sf(){const v=sb.value.toLowerCase();document.querySelectorAll('.m-link').forEach(c=>c.style.display=c.dataset.title.includes(v)?'block':'none')}</script>
     </body></html>
