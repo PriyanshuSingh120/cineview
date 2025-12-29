@@ -2,14 +2,14 @@ name: CineView Elite Sync
 
 on:
   schedule:
-    - cron: '0 * * * *' # Runs every hour
-  workflow_dispatch: # Allows you to run it manually via the 'Actions' tab
+    - cron: '0 * * * *' # Automatically runs every hour
+  workflow_dispatch: # Allows you to trigger the update instantly via the Actions tab
 
 jobs:
   sync:
     runs-on: ubuntu-latest
     
-    # Critical for allowing the bot to push changes back to the repo
+    # Required to allow the bot to save HTML files back to your repository
     permissions:
       contents: write
 
@@ -17,8 +17,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
-          # Fetches full history so we can push back safely
-          fetch-depth: 0
+          fetch-depth: 0 # Fetches full history for a safe push
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -32,15 +31,15 @@ jobs:
 
       - name: Run CineView Sync Bot
         env:
-          # Your Abyss API Key
+          # Abyss API Key for fetching movies
           ABYSS_KEY: ${{ secrets.ABYSS_KEY }}
-          # Your GitHub Personal Access Token
+          # GitHub Token for pushing files
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
-          # Your Custom AI API URL (e.g., OpenRouter or a Gemini Proxy)
+          # Your Custom AI URL (e.g., Gemini Proxy or OpenRouter)
           CUSTOM_API_URL: ${{ secrets.CUSTOM_API_URL }}
           # Your Custom AI API Key
           CUSTOM_API_KEY: ${{ secrets.CUSTOM_API_KEY }}
-          # The repository name (automatically provided by GitHub)
+          # The repository identifier
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: python abyss_bot.py
 
@@ -49,13 +48,13 @@ jobs:
           git config --global user.name "CineView-Bot"
           git config --global user.email "bot@cineview.com"
           
-          # Add all new or modified HTML files
+          # Stage all generated movie and episode files
           git add Insider/*.html episodes/*.html index.html posters.json || true
           
-          # Only commit if there are actually changes to avoid workflow errors
+          # Only push if changes were actually made
           if git diff --staged --quiet; then
-            echo "No changes detected. Skipping commit."
+            echo "No new movies found. Skipping push."
           else
-            git commit -m "Elite Sync: Updated library, fixed UI & sorted episodes"
+            git commit -m "Elite Sync: Sorted episodes, filtered titles & updated UI"
             git push origin HEAD:${{ github.ref }}
           fi
