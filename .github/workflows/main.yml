@@ -6,14 +6,19 @@ on:
   workflow_dispatch: # Allows you to run it manually via the 'Actions' tab
 
 jobs:
-  build:
+  sync:
     runs-on: ubuntu-latest
+    
+    # Critical for allowing the bot to push changes back to the repo
     permissions:
-      contents: write # CRITICAL: Allows the bot to save files back to your repo
+      contents: write
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          # Fetches full history so we can push back safely
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -25,18 +30,32 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests
 
-      - name: Run Sync Bot
+      - name: Run CineView Sync Bot
         env:
+          # Your Abyss API Key
           ABYSS_KEY: ${{ secrets.ABYSS_KEY }}
+          # Your GitHub Personal Access Token
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          # Your Custom AI API URL (e.g., OpenRouter or a Gemini Proxy)
+          CUSTOM_API_URL: ${{ secrets.CUSTOM_API_URL }}
+          # Your Custom AI API Key
+          CUSTOM_API_KEY: ${{ secrets.CUSTOM_API_KEY }}
+          # The repository name (automatically provided by GitHub)
+          GITHUB_REPOSITORY: ${{ github.repository }}
         run: python abyss_bot.py
 
-      # This part is why your manual runs weren't "working" before.
-      # It takes the HTML files created by the script and pushes them to your repo.
       - name: Commit and Push changes
         run: |
           git config --global user.name "CineView-Bot"
           git config --global user.email "bot@cineview.com"
-          git add .
-          git commit -m "Auto-sync: Updated library and UI" || echo "No changes to commit"
-          git push
+          
+          # Add all new or modified HTML files
+          git add Insider/*.html episodes/*.html index.html posters.json || true
+          
+          # Only commit if there are actually changes to avoid workflow errors
+          if git diff --staged --quiet; then
+            echo "No changes detected. Skipping commit."
+          else
+            git commit -m "Elite Sync: Updated library, fixed UI & sorted episodes"
+            git push origin HEAD:${{ github.ref }}
+          fi
