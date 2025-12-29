@@ -1,28 +1,42 @@
-name: AbyssMasterSync
+name: CineView Elite Sync
+
 on:
-  workflow_dispatch:
-  push:
-    branches: [main]
   schedule:
-    - cron: '*/10 * * * *' 
+    - cron: '0 * * * *' # Runs every hour
+  workflow_dispatch: # Allows you to run it manually via the 'Actions' tab
 
 jobs:
-  sync:
+  build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # CRITICAL: Allows the bot to save files back to your repo
+
     steps:
-      - name: Checkout
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Python Setup
-        uses: actions/setup-python@v5
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
           python-version: '3.9'
 
-      - name: Install Deps
-        run: pip install requests
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
 
-      - name: Run Sync Script
+      - name: Run Sync Bot
         env:
           ABYSS_KEY: ${{ secrets.ABYSS_KEY }}
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: python abyss_bot.py
+
+      # This part is why your manual runs weren't "working" before.
+      # It takes the HTML files created by the script and pushes them to your repo.
+      - name: Commit and Push changes
+        run: |
+          git config --global user.name "CineView-Bot"
+          git config --global user.email "bot@cineview.com"
+          git add .
+          git commit -m "Auto-sync: Updated library and UI" || echo "No changes to commit"
+          git push
