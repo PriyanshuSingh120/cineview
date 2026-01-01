@@ -5,15 +5,19 @@ ABYSS_KEY = os.getenv("ABYSS_KEY")
 GH_REPO = os.getenv("GITHUB_REPOSITORY")
 TMDB_KEY = "dc691868b09daaabe9acc238ed898cf7"
 
-# Custom AI Endpoint
+# CUSTOM API CONFIG
 API_URL = os.getenv("CUSTOM_API_URL") 
 API_KEY = os.getenv("CUSTOM_API_KEY")
+
+# Set to True to overwrite all existing files and refresh UI/Posters
+FORCE_REBUILD = True 
 
 BLACKLIST = ["recycle bin", "deleted", "trash", "temp", "hidden", "internal"]
 
 def get_existing_ids():
-    """Checks local folders for existing files to skip them."""
+    """Checks local folders for existing files."""
     existing = set()
+    if FORCE_REBUILD: return existing # Return empty set to force update all
     for folder in ["Insider", "episodes"]:
         if os.path.exists(folder):
             for file in os.listdir(folder):
@@ -31,11 +35,13 @@ def clean_title_ai(raw):
             "contents": [{"parts": [{"text": f"Scrub this filename: '{clean_raw}'. Return ONLY a JSON object with 't' (Clean Title) and 'y' (Year). Remove all quality tags and junk."}]}],
             "generationConfig": {"responseMimeType": "application/json"}
         }
+        # Assuming Gemini-like API structure
         res = requests.post(f"{API_URL}?key={API_KEY}", json=payload, timeout=20)
         if res.status_code == 200:
             d = json.loads(res.json()['candidates'][0]['content']['parts'][0]['text'])
             return d.get('t', raw), d.get('y', '')
-    except: pass
+    except Exception as e:
+        print(f"   [AI Error] {e}")
     return raw, ""
 
 def fetch_tmdb(title, year):
@@ -56,9 +62,9 @@ def fetch_tmdb(title, year):
     return {"poster": f"https://via.placeholder.com/500x750?text={title}", "score": "N/A", "back": ""}
 
 def save_file(path, content):
-    """Fixed: Saves content to disk, handling root files correctly."""
+    """Saves content to disk, handling root files and directories."""
     directory = os.path.dirname(path)
-    if directory: # Only create directory if path is not in root
+    if directory and not os.path.exists(directory):
         os.makedirs(directory, exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         f.write(content)
@@ -68,15 +74,20 @@ def natural_sort_key(s):
     return [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', s)]
 
 def main():
-    print("--- 🎬 CINEVIEW ELITE SYNC START ---")
+    print("--- 🚀 CINEVIEW RESTART SYNC START ---")
     if not ABYSS_KEY:
         print("Error: ABYSS_KEY is missing!"); return
 
     existing_ids = get_existing_ids()
-    print(f"Skipping {len(existing_ids)} already synced files...")
+    if FORCE_REBUILD:
+        print("Force Rebuild Enabled: Refreshing all content...")
+    else:
+        print(f"Incremental Sync: Skipping {len(existing_ids)} files...")
 
     try:
+        # Fetching up to 100 items from Abyss
         items = requests.get(f"https://api.abyss.to/v1/resources?key={ABYSS_KEY}&maxResults=100").json().get('items', [])
+        print(f"Total Abyss items fetched: {len(items)}")
     except Exception as e:
         print(f"Abyss API Error: {e}"); return
 
@@ -90,17 +101,19 @@ def main():
         data = fetch_tmdb(name, year)
         path = f"Insider/{iid}.html" if not is_dir else f"episodes/{iid}.html"
         
+        # Meta info for the index.html grid
         catalog.append({"n": name, "y": year, "u": path, "i": data['poster'], "t": "Movie" if not is_dir else "Series", "s": data['score']})
 
+        # Skip if already exists and not in force mode
         if iid in existing_ids: continue
         
         if not is_dir:
-            # MOVIE PLAYER
-            html = f"""<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{name}</title><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;700&display=swap" rel="stylesheet"><style>body{{background:#020205;color:#fff;font-family:'Plus Jakarta Sans',sans-serif;margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;padding:15px;box-sizing:border-box;}}.c{{width:100%;max-width:900px;background:#0d0d12;border-radius:24px;border:1px solid #1a1a25;box-shadow:0 30px 80px rgba(0,0,0,0.9);overflow:hidden;}}.v{{position:relative;width:100%;aspect-ratio:16/9;}}iframe{{position:absolute;top:0;left:0;width:100%;height:100%;border:none;}}.m{{padding:25px;}}.t{{font-size:1.6rem;font-weight:700;color:#00d2ff;margin:0 0 10px;}}</style></head><body><div class="c"><div class="v"><iframe src="https://short.icu/{iid}" allowfullscreen></iframe></div><div class="m"><h1 class="t">{name} ({year})</h1><p style="opacity:0.6">⭐ {data['score']} Rating</p></div></div></body></html>"""
+            # --- MOVIE PLAYER UI ---
+            html = f"""<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{name}</title><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;700&display=swap" rel="stylesheet"><style>body{{background:#020205;color:#fff;font-family:'Plus Jakarta Sans',sans-serif;margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;padding:15px;box-sizing:border-box;}}.c{{width:100%;max-width:900px;background:#0d0d12;border-radius:24px;border:1px solid #1a1a25;box-shadow:0 30px 80px rgba(0,0,0,0.9);overflow:hidden;}}.v{{position:relative;width:100%;aspect-ratio:16/9;}}iframe{{position:absolute;top:0;left:0;width:100%;height:100%;border:none;}}.m{{padding:25px;}}.t{{font-size:1.6rem;font-weight:700;color:#00d2ff;margin:0 0 10px;}}</style></head><body><div class="c"><div class="v"><iframe src="https://short.icu/{iid}" allowfullscreen></iframe></div><div class="m"><h1 class="t">{name} ({year})</h1><p style="opacity:0.6">⭐ {data['score']} Rating | Premium 4K Stream</p></div></div></body></html>"""
             save_file(path, html)
-            print(f"   [New Movie] {name}")
+            print(f"   [SYNC] Movie: {name}")
         else:
-            # SERIES PLAYER
+            # --- SERIES PLAYER UI ---
             try:
                 f_res = requests.get(f"https://api.abyss.to/v1/resources?key={ABYSS_KEY}&folderId={iid}").json()
                 e_items = f_res.get('items', [])
@@ -115,10 +128,10 @@ def main():
                 
                 html = f"""<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{{background:#020205;color:#fff;font-family:sans-serif;margin:0;}}iframe{{width:100%;aspect-ratio:16/9;border:none;}}.s{{width:92%;margin:20px auto;display:block;padding:18px;background:#111;color:#fff;border-radius:15px;border:1px solid #333;font-size:1rem;appearance:none;outline:none;}}</style></head><body><div style="padding:60px 20px;text-align:center;background:linear-gradient(rgba(0,0,0,0.8),#020205),url('{data['back'] or data['poster']}');background-size:cover;"><h1>{name}</h1></div><iframe id="p" src="" allowfullscreen></iframe><select class="s" onchange="ch(this.value)">{opts}</select><h2 id="et" style="text-align:center;color:#00d2ff;margin-top:15px;"></h2><script>const eps={json.dumps(ep_js)};function ch(i){{const e=eps[i];document.getElementById('p').src=e.v;document.getElementById('et').textContent=e.n;}}ch(0);</script></body></html>"""
                 save_file(path, html)
-                print(f"   [New Series] {name}")
+                print(f"   [SYNC] Series: {name}")
             except: pass
 
-    # --- ELITE INDEX ---
+    # --- ELITE INDEX UI ---
     grid_html = "".join([f"""
     <a href="{c['u']}" class="m-link" data-title="{c['n'].lower()}">
         <div class="m-card">
@@ -135,7 +148,7 @@ def main():
     .s-box{{width:100%;max-width:500px;}}
     input{{width:100%;padding:14px 22px;border-radius:15px;border:1px solid #333;background:rgba(255,255,255,0.05);color:#fff;outline:none;font-size:16px;box-sizing:border-box;}}
     main{{margin-top:140px;padding:15px;}}
-    .grid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px, 1fr));gap:15px;max-width:1400px;margin:auto;}}
+    .grid{{display:grid;grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));gap:15px;max-width:1400px;margin:auto;}}
     .m-card{{background:var(--card);border-radius:18px;overflow:hidden;border:1px solid #1a1a25;transition:0.3s;height:100%;display:flex;flex-direction:column;}}
     .p-con{{position:relative;width:100%;aspect-ratio:2/3;overflow:hidden;}}
     .p-img{{width:100%;height:100%;object-fit:cover;}}
@@ -143,7 +156,7 @@ def main():
     .type-tag{{position:absolute;bottom:10px;right:10px;background:var(--accent);color:#000;padding:2px 8px;border-radius:6px;font-size:0.55rem;font-weight:900;text-transform:uppercase;}}
     .m-info{{padding:12px;flex-grow:1;min-width:0;}} h3{{margin:0;font-size:0.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff;}} p{{margin:5px 0 0;font-size:0.75rem;color:#777;}}
     .m-link{{text-decoration:none;}}
-    @media(max-width:600px){{.grid{{grid-template-columns:repeat(2,1fr);gap:12px;}}}}
+    @media(max-width:600px){{.grid{{grid-template-columns:repeat(2, 1fr);gap:12px;}} .grid{{min-width:0;}}}}
     </style></head><body>
     <header><div class="logo">CINEVIEW</div><div class="s-box"><input type="text" id="sb" placeholder="Search library..." oninput="sf()"></div></header>
     <main><div class="grid" id="mg">{grid_html}</div></main>
@@ -151,7 +164,7 @@ def main():
     </body></html>"""
     
     save_file("index.html", index_html)
-    print("--- 🏁 SYNC FINISHED (FILES SAVED LOCALLY) ---")
+    print("--- 🏁 TOTAL RESTART DEPLOYMENT FINISHED ---")
 
 if __name__ == "__main__":
     main()
