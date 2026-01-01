@@ -2,14 +2,14 @@ name: CineView Elite Sync
 
 on:
   schedule:
-    - cron: '0 * * * *' # Every hour
-  workflow_dispatch: # Immediate manual trigger
+    - cron: '0 * * * *' # Automatically runs every hour
+  workflow_dispatch: # Allows you to click "Run workflow" for instant updates
 
 jobs:
   sync-job:
     runs-on: ubuntu-latest
     
-    # Critical for allowing the bot to save files
+    # This is required to allow the bot to save files back to your repo
     permissions:
       contents: write
 
@@ -29,16 +29,18 @@ jobs:
 
       - name: 🚀 Run Sync Script
         env:
+          # Your Secrets from GitHub Settings
           ABYSS_KEY: ${{ secrets.ABYSS_KEY }}
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
           CUSTOM_API_URL: ${{ secrets.CUSTOM_API_URL }}
           CUSTOM_API_KEY: ${{ secrets.CUSTOM_API_KEY }}
+          # Automatically provided by GitHub
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
           if [ -f "abyss_bot.py" ]; then
             python abyss_bot.py
           else
-            echo "Error: abyss_bot.py not found in root directory!"
+            echo "Error: abyss_bot.py not found in the root folder!"
             exit 1
           fi
 
@@ -47,13 +49,14 @@ jobs:
           git config --global user.name "CineView-Bot"
           git config --global user.email "bot@cineview.com"
           
-          # Stage specific folders and files
-          git add Insider/*.html episodes/*.html index.html posters.json || true
+          # Stage all changes (new HTML files, updated index, etc.)
+          git add .
           
-          # Check for changes
+          # Check if there are actually changes to commit
           if git diff --staged --quiet; then
-            echo "No new content to sync."
+            echo "No new content found in Abyss."
           else
-            git commit -m "Elite Sync: Added new content and updated UI"
+            git commit -m "Elite Sync: Added new movies & refreshed UI"
+            # Push changes back to the main branch
             git push origin HEAD:${{ github.ref }}
           fi
