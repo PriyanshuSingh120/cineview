@@ -1,166 +1,351 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=0"><title>🎬 CineView Hub</title><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet"><style>
-    :root{--bg:#010103;--card:#0d0d14;--accent:#00d2ff;--glass:rgba(10,10,15,0.85);}
-    body{background:var(--bg);color:#fff;font-family:'Plus Jakarta Sans',sans-serif;margin:0;}
-    header{position:fixed;top:0;width:100%;z-index:100;background:var(--glass);backdrop-filter:blur(25px);padding:15px;box-sizing:border-box;border-bottom:1px solid #222;display:flex;flex-direction:column;align-items:center;}
-    .logo{font-size:1.3rem;font-weight:900;color:var(--accent);letter-spacing:2px;margin-bottom:10px;text-shadow:0 0 10px rgba(0,210,255,0.5);}
-    .s-box{width:100%;max-width:500px;}
-    input{width:100%;padding:14px 22px;border-radius:15px;border:1px solid #333;background:rgba(255,255,255,0.05);color:#fff;outline:none;font-size:16px;box-sizing:border-box;}
-    main{margin-top:140px;padding:15px;}
-    .grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));gap:15px;max-width:1400px;margin:auto;}
-    .m-card{background:var(--card);border-radius:18px;overflow:hidden;border:1px solid #1a1a25;transition:0.3s;height:100%;display:flex;flex-direction:column;}
-    .p-con{position:relative;width:100%;aspect-ratio:2/3;overflow:hidden;}
-    .p-img{width:100%;height:100%;object-fit:cover;}
-    .badge{position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);padding:4px 8px;border-radius:8px;font-size:0.6rem;font-weight:bold;color:var(--accent);border:1px solid rgba(0,210,255,0.2);}
-    .type-tag{position:absolute;bottom:10px;right:10px;background:var(--accent);color:#000;padding:2px 8px;border-radius:6px;font-size:0.55rem;font-weight:900;text-transform:uppercase;}
-    .m-info{padding:12px;flex-grow:1;min-width:0;} h3{margin:0;font-size:0.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff;} p{margin:5px 0 0;font-size:0.75rem;color:#777;}
-    .m-link{text-decoration:none;}
-    @media(max-width:600px){.grid{grid-template-columns:repeat(2, 1fr);gap:12px;} .grid{min-width:0;}}
-    </style></head><body>
-    <header><div class="logo">CINEVIEW</div><div class="s-box"><input type="text" id="sb" placeholder="Search library..." oninput="sf()"></div></header>
-    <main><div class="grid" id="mg">
-    <a href="episodes/eMzdh5dYP.html" class="m-link" data-title="suzhal.the.vortex">
-        <div class="m-card">
-            <div class="p-con"><img src="https://via.placeholder.com/500x750?text=Suzhal.The.Vortex" class="p-img" loading="lazy"><div class="badge">⭐ N/A</div><div class="type-tag">Series</div></div>
-            <div class="m-info"><h3>Suzhal.The.Vortex</h3><p>2025</p></div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CineStream Infinity | Ultra Mobile</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root { --accent: #e50914; --bg: #030303; }
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background-color: var(--bg); 
+            color: white; 
+            scroll-behavior: smooth;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .glass-dark { background: rgba(0, 0, 0, 0.9); backdrop-filter: blur(20px); border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
+        .movie-card { transition: all 0.3s ease; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        
+        .pagination-btn { @apply min-w-[44px] h-[44px] rounded-xl flex items-center justify-center font-bold transition-all duration-300 glass hover:bg-white/10 text-sm; }
+        .pagination-btn.active { @apply bg-red-600 text-white border-none shadow-lg shadow-red-900/40; }
+        
+        /* Premium Android-Friendly Server Selection */
+        .server-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+        @media (min-width: 768px) {
+            .server-grid { grid-template-columns: repeat(4, 1fr); }
+        }
+        
+        .server-btn { 
+            @apply flex flex-col items-center justify-center p-4 rounded-2xl text-[11px] font-bold uppercase tracking-wider transition-all duration-300 glass text-gray-400;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .server-btn.active { 
+            background: #e50914;
+            color: white;
+            box-shadow: 0 8px 20px rgba(229, 9, 20, 0.4);
+            border-color: rgba(255,255,255,0.2);
+            transform: scale(0.98);
+        }
+        .server-btn svg { @apply mb-2 w-5 h-5; }
+
+        #home-view, #player-view { transition: opacity 0.3s ease; }
+    </style>
+</head>
+<body class="overflow-x-hidden">
+
+    <!-- Global Navigation -->
+    <nav class="fixed top-0 w-full z-[100] px-4 md:px-6 py-4 flex items-center justify-between transition-all duration-500" id="navbar">
+        <div class="flex items-center gap-4 md:gap-10">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="clearSearchAndHome()">
+                <div class="w-9 h-9 bg-red-600 rounded-lg flex items-center justify-center font-black text-lg italic shadow-lg">C</div>
+                <span class="text-xl font-extrabold tracking-tighter hidden xs:block uppercase">CINE<span class="text-red-600">INFINITY</span></span>
+            </div>
+            <div class="flex gap-4 md:gap-8 text-[10px] md:text-xs font-bold uppercase tracking-widest text-gray-400">
+                <a href="#" class="hover:text-white transition" onclick="clearSearchAndHome()">Home</a>
+                <a href="#" class="text-red-500 hover:text-red-400 transition" onclick="setHindiMode()">Hindi</a>
+                <a href="#" class="hidden md:block hover:text-white transition">Movies</a>
+            </div>
         </div>
-    </a>
-    <a href="episodes/P5Y1g8Mm2.html" class="m-link" data-title="jujutsu kaisen season 1 {hindi-english-japanese} 7">
-        <div class="m-card">
-            <div class="p-con"><img src="https://via.placeholder.com/500x750?text=Jujutsu Kaisen Season 1 {Hindi-English-Japanese} 7" class="p-img" loading="lazy"><div class="badge">⭐ N/A</div><div class="type-tag">Series</div></div>
-            <div class="m-info"><h3>Jujutsu Kaisen Season 1 {Hindi-English-Japanese} 7</h3><p>2025</p></div>
+        <div class="flex items-center gap-2">
+            <div class="glass rounded-xl px-3 py-2 flex items-center gap-2">
+                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                <input type="text" id="search-input" placeholder="Search..." onkeypress="handleSearch(event)" class="bg-transparent border-none outline-none text-xs w-20 md:w-48 placeholder-gray-600">
+            </div>
         </div>
-    </a>
-    <a href="episodes/QE_2eCibN.html" class="m-link" data-title="jujutshu s2">
-        <div class="m-card">
-            <div class="p-con"><img src="https://via.placeholder.com/500x750?text=Jujutshu s2" class="p-img" loading="lazy"><div class="badge">⭐ N/A</div><div class="type-tag">Series</div></div>
-            <div class="m-info"><h3>Jujutshu s2</h3><p>2025</p></div>
+    </nav>
+
+    <!-- VIEW: HOME PAGE -->
+    <div id="home-view" class="pt-24 pb-12 px-4 md:px-12 space-y-12 md:space-y-20">
+        
+        <!-- Trending Now -->
+        <section id="trending-section">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl md:text-4xl font-extrabold tracking-tight italic uppercase">LATEST <span class="text-red-600">PREMIERES</span></h2>
+                <div class="hidden md:flex gap-3">
+                    <button onclick="scrollRow('latest-row', -500)" class="w-10 h-10 glass rounded-xl flex items-center justify-center hover:bg-white/10 transition">←</button>
+                    <button onclick="scrollRow('latest-row', 500)" class="w-10 h-10 glass rounded-xl flex items-center justify-center hover:bg-white/10 transition">→</button>
+                </div>
+            </div>
+            <div id="latest-row" class="flex gap-4 md:gap-6 overflow-x-auto hide-scrollbar scroll-smooth pb-4 -mx-4 px-4 md:mx-0 md:px-0">
+                <!-- Data from TMDB -->
+            </div>
+        </section>
+
+        <!-- Global Catalog -->
+        <section id="catalog-section">
+            <div class="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+                <div>
+                    <h2 id="catalog-title" class="text-2xl md:text-3xl font-extrabold tracking-tight uppercase italic text-white">GLOBAL <span class="text-red-600">LIBRARY</span></h2>
+                    <div class="h-1 w-12 bg-red-600 mt-2 rounded-full"></div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <button id="clear-search-btn" onclick="clearSearchAndHome()" class="hidden text-[10px] font-bold text-red-500 uppercase tracking-widest hover:underline">Clear Filters</button>
+                    <span id="results-count" class="text-[10px] font-bold text-gray-500 uppercase tracking-widest hidden sm:block">40 Movies Per Page</span>
+                </div>
+            </div>
+            
+            <div id="catalog-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4 md:gap-6 min-h-[50vh]">
+                <!-- Data from TMDB -->
+            </div>
+
+            <!-- Unlimited Pagination (1, 2, 3...) -->
+            <div class="mt-16 flex flex-wrap items-center justify-center gap-2 md:gap-3" id="pagination-container">
+                <!-- Dynamic Pagination Buttons -->
+            </div>
+        </section>
+    </div>
+
+    <!-- VIEW: PLAYER PAGE -->
+    <div id="player-view" class="hidden pt-24 px-4 md:px-12 pb-12">
+        <div class="max-w-[1440px] mx-auto">
+            <button onclick="switchView('home')" class="flex items-center gap-2 text-gray-500 hover:text-white transition mb-6 text-[10px] font-black uppercase tracking-[0.2em]">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" stroke-width="3"/></svg>
+                Back to List
+            </button>
+
+            <div class="grid lg:grid-cols-4 gap-8 md:gap-12">
+                <div class="lg:col-span-3 space-y-6 md:space-y-8">
+                    <!-- Main Player Frame -->
+                    <div class="relative aspect-video bg-black rounded-2xl md:rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/5 ring-1 ring-white/10 shadow-red-900/5">
+                        <iframe id="video-frame" class="w-full h-full" src="" frameborder="0" allowfullscreen></iframe>
+                        <div id="loader" class="absolute inset-0 bg-zinc-950 flex flex-col items-center justify-center gap-4 hidden z-20">
+                            <div class="w-10 h-10 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+                            <span class="text-[9px] font-bold tracking-widest text-gray-500 uppercase tracking-[0.2em]">Syncing Stream...</span>
+                        </div>
+                    </div>
+
+                    <!-- Android Premium Server Selection -->
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between px-1">
+                            <h4 class="text-[10px] font-black text-gray-500 uppercase tracking-widest">Select Media Server</h4>
+                            <div class="flex items-center gap-2">
+                                <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                                <span class="text-[9px] font-bold text-green-500 uppercase">Fast Load</span>
+                            </div>
+                        </div>
+                        <div class="server-grid" id="server-list">
+                            <!-- Server Buttons -->
+                        </div>
+                    </div>
+
+                    <!-- Meta Data -->
+                    <div class="space-y-4 px-1">
+                        <h1 id="p-title" class="text-3xl md:text-6xl font-extrabold tracking-tighter leading-tight italic uppercase">MOVIE TITLE</h1>
+                        <div class="flex flex-wrap items-center gap-4 md:gap-6 text-xs font-semibold">
+                            <span class="text-red-500 font-black" id="p-rating">IMDB 8.5</span>
+                            <span class="text-gray-400" id="p-year">2024</span>
+                            <span class="glass px-2 py-1 rounded-lg text-[9px] uppercase text-white/40">Multi-Audio / Hindi</span>
+                        </div>
+                        <p id="p-desc" class="text-gray-400 text-sm md:text-lg leading-relaxed max-w-4xl font-light">
+                            Description loading...
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Sidebar Recommendations -->
+                <div class="space-y-6">
+                    <h3 class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-600 ml-1">More Like This</h3>
+                    <div id="sidebar-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
+                        <!-- Sidebar items -->
+                    </div>
+                </div>
+            </div>
         </div>
-    </a>
-    <a href="episodes/jaO-q-h5v.html" class="m-link" data-title="death.note.s01.720p.bluray.hindi.2.0-english.2.0.esub.x264-hdhub4u.ms">
-        <div class="m-card">
-            <div class="p-con"><img src="https://via.placeholder.com/500x750?text=Death.Note.S01.720p.BluRay.Hindi.2.0-English.2.0.ESub.x264-HDHub4u.Ms" class="p-img" loading="lazy"><div class="badge">⭐ N/A</div><div class="type-tag">Series</div></div>
-            <div class="m-info"><h3>Death.Note.S01.720p.BluRay.Hindi.2.0-English.2.0.ESub.x264-HDHub4u.Ms</h3><p>2025</p></div>
-        </div>
-    </a>
-    <a href="episodes/xlTJW9N1Q.html" class="m-link" data-title="special ops 1.5: the himmat story (season 1)">
-        <div class="m-card">
-            <div class="p-con"><img src="https://via.placeholder.com/500x750?text=Special Ops 1.5: The Himmat Story (Season 1)" class="p-img" loading="lazy"><div class="badge">⭐ N/A</div><div class="type-tag">Series</div></div>
-            <div class="m-info"><h3>Special Ops 1.5: The Himmat Story (Season 1)</h3><p>2025</p></div>
-        </div>
-    </a>
-    <a href="episodes/ZqJYqIrVk.html" class="m-link" data-title="squid game (season 3)">
-        <div class="m-card">
-            <div class="p-con"><img src="https://via.placeholder.com/500x750?text=Squid Game (Season 3)" class="p-img" loading="lazy"><div class="badge">⭐ N/A</div><div class="type-tag">Series</div></div>
-            <div class="m-info"><h3>Squid Game (Season 3)</h3><p>2025</p></div>
-        </div>
-    </a>
-    <a href="episodes/eLsvuNGbT.html" class="m-link" data-title="true detective">
-        <div class="m-card">
-            <div class="p-con"><img src="https://image.tmdb.org/t/p/w500/cuV2O5ZyDLHSOWzg3nLVljp1ubw.jpg" class="p-img" loading="lazy"><div class="badge">⭐ 8.3</div><div class="type-tag">Series</div></div>
-            <div class="m-info"><h3>True detective</h3><p>2025</p></div>
-        </div>
-    </a>
-    <a href="episodes/ol0piDFr4.html" class="m-link" data-title="space gen: chandrayaan (season 1)">
-        <div class="m-card">
-            <div class="p-con"><img src="https://via.placeholder.com/500x750?text=Space Gen: Chandrayaan (Season 1)" class="p-img" loading="lazy"><div class="badge">⭐ N/A</div><div class="type-tag">Series</div></div>
-            <div class="m-info"><h3>Space Gen: Chandrayaan (Season 1)</h3><p>2025</p></div>
-        </div>
-    </a>
-    <a href="episodes/A8COs6ylB.html" class="m-link" data-title="the traitors (season 1)">
-        <div class="m-card">
-            <div class="p-con"><img src="https://via.placeholder.com/500x750?text=The Traitors (Season 1)" class="p-img" loading="lazy"><div class="badge">⭐ N/A</div><div class="type-tag">Series</div></div>
-            <div class="m-info"><h3>The Traitors (Season 1)</h3><p>2025</p></div>
-        </div>
-    </a>
-    <a href="episodes/qOKZHmZoA.html" class="m-link" data-title="steal (season 1)">
-        <div class="m-card">
-            <div class="p-con"><img src="https://via.placeholder.com/500x750?text=Steal (Season 1)" class="p-img" loading="lazy"><div class="badge">⭐ N/A</div><div class="type-tag">Series</div></div>
-            <div class="m-info"><h3>Steal (Season 1)</h3><p>2025</p></div>
-        </div>
-    </a>
-    <a href="episodes/2Y-DuM2ze.html" class="m-link" data-title="a knight of the seven kingdoms (season 1)">
-        <div class="m-card">
-            <div class="p-con"><img src="https://via.placeholder.com/500x750?text=A Knight of the Seven Kingdoms (Season 1)" class="p-img" loading="lazy"><div class="badge">⭐ N/A</div><div class="type-tag">Series</div></div>
-            <div class="m-info"><h3>A Knight of the Seven Kingdoms (Season 1)</h3><p>2025</p></div>
-        </div>
-    </a>
-    <a href="episodes/c9zvQyWr6.html" class="m-link" data-title="mitti – ek nayi pehchaan (season 1)">
-        <div class="m-card">
-            <div class="p-con"><img src="https://via.placeholder.com/500x750?text=Mitti – Ek Nayi Pehchaan (Season 1)" class="p-img" loading="lazy"><div class="badge">⭐ N/A</div><div class="type-tag">Series</div></div>
-            <div class="m-info"><h3>Mitti – Ek Nayi Pehchaan (Season 1)</h3><p>2025</p></div>
-        </div>
-    </a>
-    <a href="episodes/SMYoalFAr.html" class="m-link" data-title="chernobyl (season 1)">
-        <div class="m-card">
-            <div class="p-con"><img src="https://via.placeholder.com/500x750?text=Chernobyl (Season 1)" class="p-img" loading="lazy"><div class="badge">⭐ N/A</div><div class="type-tag">Series</div></div>
-            <div class="m-info"><h3>Chernobyl (Season 1)</h3><p>2025</p></div>
-        </div>
-    </a>
-    <a href="episodes/1GSWu66cY.html" class="m-link" data-title="mrs deshpande season 1">
-        <div class="m-card">
-            <div class="p-con"><img src="https://via.placeholder.com/500x750?text=Mrs Deshpande Season 1" class="p-img" loading="lazy"><div class="badge">⭐ N/A</div><div class="type-tag">Series</div></div>
-            <div class="m-info"><h3>Mrs Deshpande Season 1</h3><p>2025</p></div>
-        </div>
-    </a>
-    <a href="episodes/VdCLxyHQI.html" class="m-link" data-title="special ops season 1">
-        <div class="m-card">
-            <div class="p-con"><img src="https://via.placeholder.com/500x750?text=Special OPs season 1" class="p-img" loading="lazy"><div class="badge">⭐ N/A</div><div class="type-tag">Series</div></div>
-            <div class="m-info"><h3>Special OPs season 1</h3><p>2025</p></div>
-        </div>
-    </a>
-    <a href="episodes/Jd2p4-mNY.html" class="m-link" data-title="special ops season 2">
-        <div class="m-card">
-            <div class="p-con"><img src="https://via.placeholder.com/500x750?text=Special OPs season 2" class="p-img" loading="lazy"><div class="badge">⭐ N/A</div><div class="type-tag">Series</div></div>
-            <div class="m-info"><h3>Special OPs season 2</h3><p>2025</p></div>
-        </div>
-    </a>
-    <a href="episodes/h0H3sExM-.html" class="m-link" data-title="taskaree">
-        <div class="m-card">
-            <div class="p-con"><img src="https://image.tmdb.org/t/p/w500/4ZTtFT94oCwC09yt8vQ1mEFwEeV.jpg" class="p-img" loading="lazy"><div class="badge">⭐ 7.2</div><div class="type-tag">Series</div></div>
-            <div class="m-info"><h3>Taskaree</h3><p>2025</p></div>
-        </div>
-    </a>
-    <a href="episodes/W8zAwzJH7.html" class="m-link" data-title="the great indian kapil show (season 4)">
-        <div class="m-card">
-            <div class="p-con"><img src="https://via.placeholder.com/500x750?text=The Great Indian Kapil Show (Season 4)" class="p-img" loading="lazy"><div class="badge">⭐ N/A</div><div class="type-tag">Series</div></div>
-            <div class="m-info"><h3>The Great Indian Kapil Show (Season 4)</h3><p>2025</p></div>
-        </div>
-    </a>
-    <a href="episodes/Sf5jhlJC7.html" class="m-link" data-title="panchayat season 3">
-        <div class="m-card">
-            <div class="p-con"><img src="https://via.placeholder.com/500x750?text=Panchayat Season 3" class="p-img" loading="lazy"><div class="badge">⭐ N/A</div><div class="type-tag">Series</div></div>
-            <div class="m-info"><h3>Panchayat Season 3</h3><p>2025</p></div>
-        </div>
-    </a>
-    <a href="episodes/DFJi6WG9-.html" class="m-link" data-title="panchayat season 2">
-        <div class="m-card">
-            <div class="p-con"><img src="https://via.placeholder.com/500x750?text=Panchayat Season 2" class="p-img" loading="lazy"><div class="badge">⭐ N/A</div><div class="type-tag">Series</div></div>
-            <div class="m-info"><h3>Panchayat Season 2</h3><p>2025</p></div>
-        </div>
-    </a>
-    <a href="episodes/cz-768yOv.html" class="m-link" data-title="panchayat season 1">
-        <div class="m-card">
-            <div class="p-con"><img src="https://via.placeholder.com/500x750?text=Panchayat Season 1" class="p-img" loading="lazy"><div class="badge">⭐ N/A</div><div class="type-tag">Series</div></div>
-            <div class="m-info"><h3>Panchayat Season 1</h3><p>2025</p></div>
-        </div>
-    </a>
-    <a href="episodes/X6Tl9NDMG.html" class="m-link" data-title="game of thrones season 3">
-        <div class="m-card">
-            <div class="p-con"><img src="https://via.placeholder.com/500x750?text=Game of thrones season 3" class="p-img" loading="lazy"><div class="badge">⭐ N/A</div><div class="type-tag">Series</div></div>
-            <div class="m-info"><h3>Game of thrones season 3</h3><p>2025</p></div>
-        </div>
-    </a>
-    <a href="episodes/ihsqQwpK-.html" class="m-link" data-title="game of thrones season 2">
-        <div class="m-card">
-            <div class="p-con"><img src="https://via.placeholder.com/500x750?text=Game of thrones season 2" class="p-img" loading="lazy"><div class="badge">⭐ N/A</div><div class="type-tag">Series</div></div>
-            <div class="m-info"><h3>Game of thrones season 2</h3><p>2025</p></div>
-        </div>
-    </a>
-    <a href="episodes/LscGMzag1.html" class="m-link" data-title="game of thrones season 1">
-        <div class="m-card">
-            <div class="p-con"><img src="None" class="p-img" loading="lazy"><div class="badge">⭐ 8.6</div><div class="type-tag">Series</div></div>
-            <div class="m-info"><h3>game of thrones season 1</h3><p>2025</p></div>
-        </div>
-    </a></div></main>
-    <script>function sf(){const v=sb.value.toLowerCase();document.querySelectorAll('.m-link').forEach(c=>c.style.display=c.dataset.title.includes(v)?'block':'none')}</script>
-    </body></html>
+    </div>
+
+    <script>
+        const API_KEY = "dc691868b09daaabe9acc238ed898cf7";
+        const IMG_URL = "https://image.tmdb.org/t/p/w500";
+        let currentPage = 1;
+        let currentMovieId = null;
+        let searchQuery = "";
+        let hindiMode = false;
+
+        const providers = [
+            { id: 'videasy', name: 'Server 1', icon: '<svg fill="currentColor" viewBox="0 0 24 24"><path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14zM8 15l7-3-7-3v6z"/></svg>', url: (id) => `https://player.videasy.net/tmdb/${id}` },
+            { id: 'vidsrcto', name: 'Server 2', icon: '<svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-9l6 4.5-6 4.5z"/></svg>', url: (id) => `https://vidsrc.to/embed/movie/${id}` },
+            { id: 'vidsrcme', name: 'Server 3', icon: '<svg fill="currentColor" viewBox="0 0 24 24"><path d="M10 16.5l6-4.5-6-4.5v9zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>', url: (id) => `https://vidsrc.me/embed/movie?tmdb=${id}` },
+            { id: '2embed', name: 'Server 4', icon: '<svg fill="currentColor" viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12zM10 14.5l6-4.5-6-4.5v9z"/></svg>', url: (id) => `https://www.2embed.cc/embed/${id}` }
+        ];
+
+        async function apiRequest(path, params = {}) {
+            const queryParams = new URLSearchParams({ api_key: API_KEY, ...params });
+            try {
+                const res = await fetch(`https://api.themoviedb.org/3/${path}?${queryParams}`);
+                return await res.json();
+            } catch(e) { return null; }
+        }
+
+        async function initHome() {
+            const data = await apiRequest('movie/now_playing');
+            if (data) {
+                const latestRow = document.getElementById('latest-row');
+                latestRow.innerHTML = data.results.map(m => createCard(m, true)).join('');
+            }
+            renderCatalog(1);
+        }
+
+        async function renderCatalog(page) {
+            currentPage = page;
+            const grid = document.getElementById('catalog-grid');
+            const titleEl = document.getElementById('catalog-title');
+            const clearBtn = document.getElementById('clear-search-btn');
+            const trendingSection = document.getElementById('trending-section');
+            
+            let allMovies = [];
+            const tmdbPage1 = (page * 2) - 1;
+            const tmdbPage2 = page * 2;
+
+            if (searchQuery) {
+                titleEl.innerHTML = `Results: <span class="text-red-600">${searchQuery.toUpperCase()}</span>`;
+                clearBtn.classList.remove('hidden');
+                trendingSection.classList.add('hidden');
+                const [res1, res2] = await Promise.all([
+                    apiRequest('search/movie', { query: searchQuery, page: tmdbPage1 }),
+                    apiRequest('search/movie', { query: searchQuery, page: tmdbPage2 })
+                ]);
+                allMovies = [...(res1?.results || []), ...(res2?.results || [])];
+            } else if (hindiMode) {
+                titleEl.innerHTML = `Hindi <span class="text-red-600">Dubbed</span>`;
+                clearBtn.classList.remove('hidden');
+                trendingSection.classList.add('hidden');
+                const [res1, res2] = await Promise.all([
+                    apiRequest('discover/movie', { with_original_language: 'hi', page: tmdbPage1, sort_by: 'popularity.desc' }),
+                    apiRequest('discover/movie', { with_original_language: 'hi', page: tmdbPage2, sort_by: 'popularity.desc' })
+                ]);
+                allMovies = [...(res1?.results || []), ...(res2?.results || [])];
+            } else {
+                titleEl.innerHTML = `Global <span class="text-red-600">Library</span>`;
+                clearBtn.classList.add('hidden');
+                trendingSection.classList.remove('hidden');
+                const [res1, res2] = await Promise.all([
+                    apiRequest('movie/popular', { page: tmdbPage1 }),
+                    apiRequest('movie/popular', { page: tmdbPage2 })
+                ]);
+                allMovies = [...(res1?.results || []), ...(res2?.results || [])];
+            }
+            
+            grid.innerHTML = allMovies.length === 0 ? `<div class="col-span-full py-20 text-center text-gray-500">No content found</div>` : allMovies.map(m => createCard(m)).join('');
+            
+            renderPagination();
+            if(page > 1) window.scrollTo({ top: document.getElementById('catalog-section').offsetTop - 100, behavior: 'smooth' });
+        }
+
+        function createCard(m, isWide = false) {
+            if(!m.poster_path && !m.backdrop_path) return '';
+            const date = m.release_date ? m.release_date.split('-')[0] : 'N/A';
+            const imgPath = isWide ? (m.backdrop_path || m.poster_path) : (m.poster_path || m.backdrop_path);
+            
+            return `
+                <div class="movie-card group cursor-pointer" onclick="openPlayer(${m.id})">
+                    <div class="relative ${isWide ? 'w-48 md:w-64 aspect-[16/9]' : 'aspect-[2/3]'} rounded-xl md:rounded-[1.5rem] overflow-hidden bg-zinc-900 border border-white/5">
+                        <img src="${IMG_URL + imgPath}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500" loading="lazy">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-60"></div>
+                        <div class="absolute inset-0 p-3 flex flex-col justify-end opacity-0 group-hover:opacity-100 transition-all duration-300 bg-black/40 backdrop-blur-[2px]">
+                            <h4 class="font-bold text-[10px] md:text-xs truncate uppercase tracking-tight italic">${m.title}</h4>
+                            <div class="flex items-center gap-2 mt-1">
+                                <div class="w-6 h-6 rounded-full bg-red-600 flex items-center justify-center shadow-lg"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
+                                <span class="text-[9px] font-bold text-gray-300">${date}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderPagination() {
+            const container = document.getElementById('pagination-container');
+            let btns = '';
+            const range = 2;
+            let start = Math.max(1, currentPage - range);
+            let end = start + 4;
+
+            if(currentPage > 1) btns += `<button onclick="renderCatalog(${currentPage - 1})" class="pagination-btn">PREV</button>`;
+            for(let i = start; i <= end; i++) btns += `<button onclick="renderCatalog(${i})" class="pagination-btn ${currentPage === i ? 'active' : ''}">${i}</button>`;
+            btns += `<button onclick="renderCatalog(${currentPage + 1})" class="pagination-btn">NEXT</button>`;
+            container.innerHTML = btns;
+        }
+
+        function handleSearch(event) {
+            if (event.key === "Enter") {
+                const query = event.target.value.trim();
+                if (query) {
+                    searchQuery = query;
+                    hindiMode = false;
+                    switchView('home');
+                    renderCatalog(1);
+                    event.target.blur();
+                }
+            }
+        }
+
+        function setHindiMode() {
+            hindiMode = true;
+            searchQuery = "";
+            switchView('home');
+            renderCatalog(1);
+        }
+
+        function clearSearchAndHome() {
+            searchQuery = "";
+            hindiMode = false;
+            document.getElementById('search-input').value = "";
+            switchView('home');
+            renderCatalog(1);
+        }
+
+        function switchView(view) {
+            const home = document.getElementById('home-view');
+            const player = document.getElementById('player-view');
+            const nav = document.getElementById('navbar');
+
+            if(view === 'home') {
+                player.classList.add('hidden');
+                home.classList.remove('hidden');
+                nav.classList.remove('glass-dark');
+            } else {
+                home.classList.add('hidden');
+                player.classList.remove('hidden');
+                nav.classList.add('glass-dark');
+            }
+            window.scrollTo(0,0);
+        }
+
+        async function openPlayer(id) {
+            currentMovieId = id;
+            try {
+                const m = await apiRequest(`movie/${id}`);
+                if (!m) return;
+                document.getElementById('p-title').innerText = m.title.toUpperCase();
+                document.getElementById('p-desc').innerText = m.overview;
+                document.getElementById('p-year').innerText = m.release_date ? m.release_date.split('-')[0] : 'N/A';
+                document.getElementById('p-rating').innerText = `IMDB ${m.vote_average.toFixed(1)}`;
+                renderServerList();
+                setServer('videasy');
+                renderSidebar();
+                switchView('player');
+            } catch(e) { console.error("Player Error"); }
+        }
+
+        function renderServerList() {
+            const list = document.getElementById('server-list');
+            list.innerHTML = providers.map(p => `
+                <button id="srv-${p.id}" onclick="setServer('${p.id}')" class
